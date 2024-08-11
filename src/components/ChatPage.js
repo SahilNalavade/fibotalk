@@ -172,18 +172,33 @@ const ResultBox = ({ sql, data, chart }) => {
 </TabList>
 
         <TabPanels>
-          <TabPanel>
-            <Box position="relative">
-              <pre>{sql}</pre>
-              <IconButton
-                icon={<CopyIcon />}
-                position="absolute"
-                top={2}
-                right={2}
-                onClick={onCopy}
-              />
-            </Box>
-          </TabPanel>
+        <TabPanel>
+      <Box
+        position="relative"
+        bg="gray.900"         // Dark background resembling a SQL editor
+        color="white"         // White font color for better contrast
+        fontFamily="monospace" // Monospace font for code
+        fontSize="sm"         // Smaller font size to mimic code editors
+        p={4}                 // Padding around the text for better readability
+        borderRadius="md"     // Rounded corners for a neat look
+        overflowX="auto"      // Handle long lines by allowing horizontal scrolling
+      >
+        <pre>{sql}</pre>
+        <IconButton
+          icon={<CopyIcon />}
+          position="absolute"
+          top={2}
+          right={2}
+          onClick={onCopy}
+          size="sm"
+          aria-label="Copy SQL"
+          bg="gray.700"
+          _hover={{ bg: "gray.600" }} // Slightly lighter on hover
+          _active={{ bg: "gray.500" }} // Active state for the button
+          color="white"                // Button color to match the theme
+        />
+      </Box>
+    </TabPanel>
           <TabPanel>
             <Flex justifyContent="space-between" alignItems="center" mb={4}>
               <Text fontSize="lg" fontWeight="bold">Data Table</Text>
