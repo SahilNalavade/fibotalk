@@ -125,7 +125,7 @@ const ResultBox = ({ sql, data, chart }) => {
   const closeModal = () => setIsModalOpen(false);
 
   return (
-    <Box borderRadius="md" p={4} width={'85%'} mx="auto" mt={'10'}>
+    <Box borderRadius="md" p={2} width={'85%'} mx="auto" >
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
         <VStack align="start" spacing={4}>
           <Editable

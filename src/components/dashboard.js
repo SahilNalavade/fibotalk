@@ -64,13 +64,15 @@ const Dashboard = () => {
       <div className="flex flex-grow overflow-hidden">
         <SignedIn>
           <SideNav />
-          <main className="flex-grow p-4"  style={{ paddingTop: '110px', backgroundColor: bgColor }}>
+          <main className="flex-grow p-4"  style={{ paddingTop: '105px', backgroundColor: bgColor }}>
+          <Box maxWidth="90%" mx="auto" >
           <Box mt={4}>
   <Breadcrumb
     spacing="8px"
     separator={<ChevronRightIcon color={breadcrumbColor} boxSize="18px" />}
     fontSize="lg"
     color={breadcrumbColor}
+    mb={14}
   >
     <BreadcrumbItem>
       <BreadcrumbLink href="#" fontSize="lg">Connection</BreadcrumbLink>
@@ -80,6 +82,7 @@ const Dashboard = () => {
     </BreadcrumbItem>
   </Breadcrumb>
 </Box>
+
             <Tabs index={activeTabIndex} onChange={(index) => setActiveTabIndex(index)}>
               <TabList mb="1em">
                 <Tab>API Key</Tab>
@@ -120,6 +123,7 @@ const Dashboard = () => {
                 </TabPanel>
               </TabPanels>
             </Tabs>
+            </Box>
           </main>
         </SignedIn>
         <SignedOut>

@@ -147,7 +147,7 @@ const AnotherPage = () => {
       <TopNav />
       <div className="flex flex-grow overflow-hidden">
         <SideNav />
-        <main className="flex-grow p-4" style={{ paddingTop: '120px' }}>
+        <main className="flex-grow p-4" style={{ paddingTop: '105px' }}>
           <Box maxWidth="90%" mx="auto" >
           <Box mt={4}>
   <Breadcrumb

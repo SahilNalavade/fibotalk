@@ -391,14 +391,15 @@ const Reports = () => {
       <TopNav />
       <div className="flex flex-grow overflow-hidden">
         <SideNav />
-        <main className="flex-grow p-4" style={{ paddingTop: '110px' }}>
-          <Box bg={bgColor} p={4} rounded="md">
+        <main className="flex-grow p-4" style={{ paddingTop: '105px' }}>
+          <Box maxWidth="90%" mx="auto" rounded="md">
             <Box mt={4}>
               <Breadcrumb
                 spacing="8px"
                 separator={<ChevronRightIcon color={breadcrumbColor} boxSize="18px" />}
                 fontSize="lg"
                 color={breadcrumbColor}
+                mb={14}
               >
                 {breadcrumbItems.map((item, index) => (
                   <BreadcrumbItem key={index} isCurrentPage={index === breadcrumbItems.length - 1}>
