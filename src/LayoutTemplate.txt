@@ -29,3 +29,123 @@ const AnotherPage = () => {
 };
 
 export default AnotherPage;
+---------
+
+<Tabs>
+        <TabList>
+          <Tab>SQL</Tab>
+          <Tab>Data</Tab>
+          <Tab>Chart</Tab>
+          
+
+        </TabList>
+
+        <TabPanels>
+          <TabPanel>
+          <Box
+  position="relative"
+  bg="gray.900"
+  color="white"
+  fontFamily="monospace"
+  fontSize="sm"
+  p={4}
+  borderRadius="md"
+  overflowX="auto"
+>
+  <pre>{sql}</pre>
+  
+  <Flex position="absolute" top={2} right={2} gap={2}>
+    <IconButton
+      icon={<EditIcon />}
+      size="sm"
+      bg="gray.700"
+      color={'#fff'}
+      variant="solid"
+      _hover={{ bg: '#2d3748' }}
+      aria-label="Edit"
+    />
+    <IconButton
+      icon={<CopyIcon />}
+      size="sm"
+      aria-label="Copy SQL"
+      bg="gray.700"
+      _hover={{ bg: "gray.600" }}
+      _active={{ bg: "gray.500" }}
+      color="white"
+    />
+  </Flex>
+  
+</Box>
+
+          </TabPanel>
+          <TabPanel>
+            <Flex justifyContent="space-between" alignItems="center" mb={4}>
+              <Text fontSize="lg" fontWeight="bold">Data Table</Text>
+              <Button
+                leftIcon={<DownloadIcon />}
+                onClick={downloadCSV}
+              >
+                Download CSV
+              </Button>
+            </Flex>
+            <Table variant="simple">
+              <Thead>
+                <Tr>
+                  {Object.keys(data[0]).map((key) => (
+                    <Th key={key}>{key}</Th>
+                  ))}
+                </Tr>
+              </Thead>
+              <Tbody>
+                {data.map((row, index) => (
+                  <Tr key={index}>
+                    {Object.values(row).map((value, i) => (
+                      <Td key={i}>{value}</Td>
+                    ))}
+                  </Tr>
+                ))}
+              </Tbody>
+            </Table>
+          </TabPanel>
+          <TabPanel>
+            <Box>
+              <Flex justifyContent="space-between" alignItems="center" mb={4}>
+                <Select value={chartType} onChange={(e) => setChartType(e.target.value)} width="200px">
+                  <option value="bar">Bar Chart</option>
+                  <option value="line">Line Chart</option>
+                  <option value="pie">Pie Chart</option>
+                </Select>
+                <HStack spacing={2}>
+                  <IconButton icon={<RepeatIcon />} onClick={() => setChartSize(1)} />
+                  <IconButton icon={<AddIcon />} onClick={() => setChartSize(prev => prev + 0.2)} />
+                  <IconButton icon={<MinusIcon />} onClick={() => setChartSize(prev => prev > 0.4 ? prev - 0.2 : prev)} />
+                  <IconButton icon={<ExternalLinkIcon />} onClick={openModal} />
+                  <Button
+                    leftIcon={<DownloadIcon />}
+                    onClick={() => alert('Download chart functionality to be implemented')}
+                  >
+                    Download Chart
+                  </Button>
+                </HStack>
+              </Flex>
+              <Box transform={`scale(${chartSize})`} transformOrigin="top left">
+                {getChartComponent()}
+              </Box>
+
+              <Modal isOpen={isModalOpen} onClose={closeModal} size="full">
+                <ModalOverlay />
+                <ModalContent>
+                  <ModalHeader>Expanded Chart</ModalHeader>
+                  <ModalCloseButton />
+                  <ModalBody>
+                    {getChartComponent()}
+                  </ModalBody>
+                  <ModalFooter>
+                    <Button onClick={closeModal}>Close</Button>
+                  </ModalFooter>
+                </ModalContent>
+              </Modal>
+            </Box>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>

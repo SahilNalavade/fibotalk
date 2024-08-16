@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Box,
-  Heading,
   Flex,
   Text,
   Input,
@@ -10,7 +9,6 @@ import {
   HStack,
   useColorModeValue,
   Container,
-  Divider,
   IconButton,
   Tabs,
   TabList,
@@ -24,7 +22,6 @@ import {
   Tr,
   Th,
   Td,
-  Select,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -43,37 +40,29 @@ import {
   FormControl,
   FormLabel,
   Textarea,
+  Image,
+  Center,
+  InputGroup,
+  InputRightElement,
+  Menu,MenuButton,MenuList,MenuItem
 } from '@chakra-ui/react';
-import { ArrowForwardIcon, CheckIcon, CloseIcon, CopyIcon, DownloadIcon, RepeatIcon, AddIcon, MinusIcon, ExternalLinkIcon } from '@chakra-ui/icons';
-import { Bar, Line, Pie } from 'react-chartjs-2';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  ArcElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
+  CheckIcon,
+  CopyIcon,
+  DownloadIcon,
+  RepeatIcon,
+  AddIcon,
+  MinusIcon,
+  ChevronDownIcon
+} from '@chakra-ui/icons';
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import TopNav from './TopNav';
 import SideNav from './SideNav';
 import { useAuth } from '../auth';
-
-// Register all necessary elements
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  ArcElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { UserButton } from '@clerk/clerk-react';
+import { FaPencilAlt, FaThumbsDown, FaThumbsUp,FaExpand,FaChartBar, FaChartLine, FaChartPie } from 'react-icons/fa';
 
 const ExamplePrompt = ({ text, onClick }) => {
   const bgColor = useColorModeValue('gray.100', 'gray.700');
@@ -87,6 +76,8 @@ const ExamplePrompt = ({ text, onClick }) => {
       cursor="pointer"
       bg={bgColor}
       _hover={{ bg: hoverBgColor }}
+      w="full"
+      textAlign="center"
       onClick={onClick}
     >
       <Text>{text}</Text>
@@ -94,21 +85,108 @@ const ExamplePrompt = ({ text, onClick }) => {
   );
 };
 
-const ChatMessage = ({ message, isUser }) => {
-  const bgColor = useColorModeValue(isUser ? 'blue.100' : 'gray.100', isUser ? 'blue.700' : 'gray.700');
-  const color = useColorModeValue(isUser ? 'blue.700' : 'gray.700', isUser ? 'white' : 'white');
+const ChatMessage = ({ message, isUser, onEdit }) => {
+  const bgColor = useColorModeValue(isUser ? 'transparent' : 'white', isUser ? 'blue.700' : 'gray.700');
+  const borderColor = useColorModeValue(isUser ? 'transparent' : '#E2E8F0', isUser ? 'blue.700' : 'gray.700');
+  const color = useColorModeValue(isUser ? 'black' : 'gray.700', isUser ? 'white' : 'white');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedMessage, setEditedMessage] = useState(message);
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleSaveClick = () => {
+    onEdit(editedMessage);
+    setIsEditing(false);
+  };
 
   return (
-    <Box
+    <HStack
       alignSelf={isUser ? 'flex-end' : 'flex-start'}
-      bg={bgColor}
-      color={color}
-      p={3}
-      borderRadius="lg"
-      maxW="70%"
+      spacing={3}
+      w="full"
+      justifyContent={isUser ? 'flex-end' : 'flex-start'}
     >
-      <Text>{message}</Text>
-    </Box>
+      {!isUser && (
+        <Box position="relative" maxW="80%">
+          <Image
+            borderRadius="full"
+            boxSize="28px"
+            src="/response_profile_pic.png"
+            alt="Profile Pic"
+            position="absolute"
+            top="4"
+            left="0"
+          />
+          <Box
+            bg={bgColor}
+            color={color}
+            border={'solid'}
+            borderColor={borderColor}
+            p={3}
+            borderRadius="lg"
+            ml="50px"
+            mt="10px"
+            w="full"
+            textAlign="left"
+          >
+            <HStack alignItems="flex-start">
+              {isEditing ? (
+                <Input
+                  value={editedMessage}
+                  onChange={(e) => setEditedMessage(e.target.value)}
+                  size="sm"
+                  w="full"
+                />
+              ) : (
+                <Text whiteSpace="pre-wrap">{message}</Text>
+              )}
+            </HStack>
+          </Box>
+        </Box>
+      )}
+      {isUser && (
+        <Box
+          bg={bgColor}
+          color={color}
+          border={'solid'}
+          borderColor={borderColor}
+          p={3}
+          borderRadius="lg"
+          ml="auto"
+          maxW="80%"
+          textAlign="right"
+        >
+          <HStack justify="flex-end">
+            {isEditing ? (
+              <Input
+                value={editedMessage}
+                onChange={(e) => setEditedMessage(e.target.value)}
+                size="sm"
+                w="full"
+              />
+            ) : (
+              <Text whiteSpace="pre-wrap">{message}</Text>
+            )}
+            <HStack spacing={2}>
+              <IconButton
+                icon={isEditing ? <CheckIcon /> : <FaPencilAlt />}
+                size="sm"
+                bg="transparent"
+                onClick={isEditing ? handleSaveClick : handleEditClick}
+                aria-label={isEditing ? 'Save' : 'Edit'}
+                _hover={{ bg: 'transparent' }}
+                _active={{ bg: 'transparent' }}
+              />
+              <Box ml={2}>
+                <UserButton />
+              </Box>
+            </HStack>
+          </HStack>
+        </Box>
+      )}
+    </HStack>
   );
 };
 
@@ -123,7 +201,7 @@ const ResultBox = ({ sql, data, chart }) => {
 
   const downloadCSV = () => {
     const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => Object.values(row).join(',')).join('\n');
+    const rows = data.map((row) => Object.values(row).join(',')).join('\n');
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${rows}`;
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -137,11 +215,45 @@ const ResultBox = ({ sql, data, chart }) => {
   const getChartComponent = () => {
     switch (chartType) {
       case 'line':
-        return <Line data={chart.data} options={chart.options} />;
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="deliciousness" stroke="#8884d8" activeDot={{ r: 8 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        );
       case 'pie':
-        return <Pie data={chart.data} options={chart.options} />;
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie data={data} dataKey="deliciousness" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={chart.colors[index % chart.colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        );
       default:
-        return <Bar data={chart.data} options={chart.options} />;
+        return (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="deliciousness" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        );
     }
   };
 
@@ -149,67 +261,65 @@ const ResultBox = ({ sql, data, chart }) => {
   const closeModal = () => setIsModalOpen(false);
 
   return (
-    <Box borderWidth={1} borderRadius="md" p={4}>
+    <Box borderWidth={1} borderRadius="md" p={4} w="full" mx="auto">
       <Tabs>
-      <TabList>
-  <Tab>SQL</Tab>
-  <Tab>Data</Tab>
-  <Tab>Chart</Tab>
-  <Button 
-  ml="auto" 
-  onClick={onOpen} 
-  leftIcon={<ExternalLinkIcon />} 
-  size="sm"  // Decrease button size
-  bg={'#1a202c'}  // Dark charcoal color
-  color={'#fff'}
-  variant="solid"  // Ensure it's a solid button
-  _hover={{ bg: '#2d3748' }}  // Slightly lighter on hover
->
-  Save
-</Button>
-
-
-</TabList>
+        <TabList>
+          <Tab>SQL</Tab>
+          <Tab>Data</Tab>
+          <Tab>Chart</Tab>
+          <Button
+            ml="auto"
+            right={5}
+            onClick={onOpen}
+            size="sm"
+            bg={'#1a202c'}
+            color={'#fff'}
+            variant="solid"
+            _hover={{ bg: '#2d3748' }}
+          >
+            Save
+          </Button>
+        </TabList>
 
         <TabPanels>
-        <TabPanel>
-      <Box
-        position="relative"
-        bg="gray.900"         // Dark background resembling a SQL editor
-        color="white"         // White font color for better contrast
-        fontFamily="monospace" // Monospace font for code
-        fontSize="sm"         // Smaller font size to mimic code editors
-        p={4}                 // Padding around the text for better readability
-        borderRadius="md"     // Rounded corners for a neat look
-        overflowX="auto"      // Handle long lines by allowing horizontal scrolling
-      >
-        <pre>{sql}</pre>
-        <IconButton
-          icon={<CopyIcon />}
-          position="absolute"
-          top={2}
-          right={2}
-          onClick={onCopy}
-          size="sm"
-          aria-label="Copy SQL"
-          bg="gray.700"
-          _hover={{ bg: "gray.600" }} // Slightly lighter on hover
-          _active={{ bg: "gray.500" }} // Active state for the button
-          color="white"                // Button color to match the theme
-        />
-      </Box>
-    </TabPanel>
+          <TabPanel>
+            <Box
+              position="relative"
+              bg="gray.900"
+              color="white"
+              fontFamily="monospace"
+              fontSize="sm"
+              p={4}
+              borderRadius="md"
+              overflowX="auto"
+              w="full"
+            >
+              <pre style={{ textAlign: 'left', margin: 0 }}>{sql}</pre>
+              <IconButton
+                icon={<CopyIcon />}
+                position="absolute"
+                top={2}
+                right={2}
+                onClick={onCopy}
+                size="sm"
+                aria-label="Copy SQL"
+                bg="gray.700"
+                _hover={{ bg: 'gray.600' }}
+                _active={{ bg: 'gray.500' }}
+                color="white"
+              />
+            </Box>
+          </TabPanel>
           <TabPanel>
             <Flex justifyContent="space-between" alignItems="center" mb={4}>
-              <Text fontSize="lg" fontWeight="bold">Data Table</Text>
-              <Button
-                leftIcon={<DownloadIcon />}
-                onClick={downloadCSV}
-              >
+              <Text fontSize="lg" fontWeight="bold">
+                Data Table
+              </Text>
+              <Button leftIcon={<DownloadIcon />} onClick={downloadCSV}>
                 Download CSV
               </Button>
             </Flex>
-            <Table variant="simple">
+            <Table variant="simple" w="full">
               <Thead>
                 <Tr>
                   {Object.keys(data[0]).map((key) => (
@@ -230,26 +340,40 @@ const ResultBox = ({ sql, data, chart }) => {
           </TabPanel>
           <TabPanel>
             <Box>
-              <Flex justifyContent="space-between" alignItems="center" mb={4}>
-                <Select value={chartType} onChange={(e) => setChartType(e.target.value)} width="200px">
-                  <option value="bar">Bar Chart</option>
-                  <option value="line">Line Chart</option>
-                  <option value="pie">Pie Chart</option>
-                </Select>
+              <Flex justifyContent="end" alignItems="center" mb={4}>
+                
                 <HStack spacing={2}>
                   <IconButton icon={<RepeatIcon />} onClick={() => setChartSize(1)} />
-                  <IconButton icon={<AddIcon />} onClick={() => setChartSize(prev => prev + 0.2)} />
-                  <IconButton icon={<MinusIcon />} onClick={() => setChartSize(prev => prev > 0.4 ? prev - 0.2 : prev)} />
-                  <IconButton icon={<ExternalLinkIcon />} onClick={openModal} />
-                  <Button
-                    leftIcon={<DownloadIcon />}
-                    onClick={() => alert('Download chart functionality to be implemented')}
-                  >
-                    Download Chart
-                  </Button>
+                  <IconButton icon={<DownloadIcon />} onClick={() => alert('Download chart functionality to be implemented')} />
+                  <IconButton icon={<AddIcon />} onClick={() => setChartSize((prev) => prev + 0.2)} />
+                  <IconButton icon={<MinusIcon />} onClick={() => setChartSize((prev) => (prev > 0.4 ? prev - 0.2 : prev))} />
+                  <IconButton icon={<FaExpand />} onClick={openModal} />
+                  <Menu>
+  <MenuButton as={Button}>
+    <HStack>
+      {chartType === 'bar' && <FaChartBar />}
+      {chartType === 'line' && <FaChartLine />}
+      {chartType === 'pie' && <FaChartPie />}
+      <Text>{chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart</Text>
+      <ChevronDownIcon /> {/* Adding the down chevron icon */}
+    </HStack>
+  </MenuButton>
+  <MenuList>
+    <MenuItem icon={<FaChartBar />} onClick={() => setChartType('bar')}>
+      Bar Chart
+    </MenuItem>
+    <MenuItem icon={<FaChartLine />} onClick={() => setChartType('line')}>
+      Line Chart
+    </MenuItem>
+    <MenuItem icon={<FaChartPie />} onClick={() => setChartType('pie')}>
+      Pie Chart
+    </MenuItem>
+  </MenuList>
+</Menu>
+             
                 </HStack>
               </Flex>
-              <Box transform={`scale(${chartSize})`} transformOrigin="top left">
+              <Box transform={`scale(${chartSize})`} transformOrigin="top left" w="full">
                 {getChartComponent()}
               </Box>
 
@@ -258,9 +382,7 @@ const ResultBox = ({ sql, data, chart }) => {
                 <ModalContent>
                   <ModalHeader>Expanded Chart</ModalHeader>
                   <ModalCloseButton />
-                  <ModalBody>
-                    {getChartComponent()}
-                  </ModalBody>
+                  <ModalBody>{getChartComponent()}</ModalBody>
                   <ModalFooter>
                     <Button onClick={closeModal}>Close</Button>
                   </ModalFooter>
@@ -296,28 +418,21 @@ const ResultBox = ({ sql, data, chart }) => {
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <Box position="relative">
+                  <Box position="relative" bg={'black'} color={'white'} p={5} fontSize={14}>
                     <pre>{sql}</pre>
-                    <IconButton
-                      icon={<CopyIcon />}
-                      position="absolute"
-                      top={2}
-                      right={2}
-                      onClick={onCopy}
-                    />
+                    <IconButton icon={<CopyIcon />} position="absolute" top={2} right={2} onClick={onCopy} color={'white'} bg={'transparent'} _active={'transparent'} _hover={'transparent'} />
                   </Box>
                 </TabPanel>
                 <TabPanel>
                   <Flex justifyContent="space-between" alignItems="center" mb={4}>
-                    <Text fontSize="lg" fontWeight="bold">Data Table</Text>
-                    <Button
-                      leftIcon={<DownloadIcon />}
-                      onClick={downloadCSV}
-                    >
+                    <Text fontSize="lg" fontWeight="bold">
+                      Data Table
+                    </Text>
+                    <Button leftIcon={<DownloadIcon />} onClick={downloadCSV}>
                       Download CSV
                     </Button>
                   </Flex>
-                  <Table variant="simple">
+                  <Table variant="simple" w="full">
                     <Thead>
                       <Tr>
                         {Object.keys(data[0]).map((key) => (
@@ -337,9 +452,7 @@ const ResultBox = ({ sql, data, chart }) => {
                   </Table>
                 </TabPanel>
                 <TabPanel>
-                  <Box>
-                    {getChartComponent()}
-                  </Box>
+                  <Box w="full">{getChartComponent()}</Box>
                 </TabPanel>
               </TabPanels>
             </Tabs>
@@ -349,7 +462,9 @@ const ResultBox = ({ sql, data, chart }) => {
             <Button variant="outline" mr={3} onClick={onClose}>
               Cancel
             </Button>
-            <Button colorScheme="blue">Save</Button>
+            <a href="/reports">
+              <Button colorScheme="blue">Save</Button>
+            </a>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
@@ -364,11 +479,24 @@ const ChatPage = () => {
   const [isWaitingForConfirmation, setIsWaitingForConfirmation] = useState(false);
   const [currentSteps, setCurrentSteps] = useState([]);
   const [result, setResult] = useState(null);
+  const [showExamples, setShowExamples] = useState(true);
 
   const examplePrompts = [
-    "How do I make a chocolate cake?",
-    "What's the best way to learn a new language?",
-    "Can you explain quantum computing?",
+    {
+      title: 'Examples',
+      prompt: 'What are the refund trends for the last 5 months?',
+      imageSrc: '/vector1.png',
+    },
+    {
+      title: 'Capabilities',
+      prompt: 'What are the net profit trends for the last 3 years?',
+      imageSrc: '/vector1.png',
+    },
+    {
+      title: 'Limitations',
+      prompt: 'What are the monthly revenue trends?',
+      imageSrc: '/vector1.png',
+    },
   ];
 
   const handleSend = () => {
@@ -376,69 +504,71 @@ const ChatPage = () => {
 
     setMessages([...messages, { text: inputValue, isUser: true }]);
     setInputValue('');
+    setShowExamples(false);
 
-    // Simulate GPT response with steps
     setTimeout(() => {
       const steps = [
-        "Research recipes for chocolate cake",
-        "Gather ingredients",
-        "Preheat the oven",
-        "Mix dry ingredients",
-        "Mix wet ingredients",
-        "Combine wet and dry ingredients",
-        "Pour batter into cake pan",
-        "Bake the cake",
-        "Let it cool and frost",
+        'Research recipes for chocolate cake',
+        'Gather ingredients',
+        'Preheat the oven',
+        'Mix dry ingredients',
+        'Mix wet ingredients',
+        'Combine wet and dry ingredients',
+        'Pour batter into cake pan',
+        'Bake the cake',
+        'Let it cool and frost',
       ];
       setCurrentSteps(steps);
-      setMessages(prev => [...prev, { text: "Here are the steps I'll take:", isUser: false }]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          text: `Here are the steps I'll take:\n\nTo calculate sales trend, below is the pseudocode:\n1. Sales is to be calculated from the revenue column from the order table.\n2. Date filter to be applied using the order date column from the order table.\n3. Sales numbers to be grouped monthly.`,
+          isUser: false,
+        },
+      ]);
+
       setIsWaitingForConfirmation(true);
     }, 1000);
   };
 
+  const handleEditMessage = (index, newMessage) => {
+    const updatedMessages = [...messages];
+    updatedMessages[index].text = newMessage;
+    setMessages(updatedMessages);
+  };
+
   const handleConfirmation = (confirmed) => {
     setIsWaitingForConfirmation(false);
+
     if (confirmed) {
-      // Simulate generating a result
       const simulatedResult = {
-        sql: "SELECT * FROM cakes WHERE deliciousness > 9000;",
+        sql: `SELECT c.id, c.title
+FROM chats c
+INNER JOIN (
+  SELECT chat_id, COUNT(*) AS message_count
+  FROM messages
+  GROUP BY chat_id
+) m ON c.id = m.chat_id
+WHERE m.message_count >= 4;`,
         data: [
-          { id: 1, name: "Super Chocolate Cake", deliciousness: 9001 },
-          { id: 2, name: "Vanilla Cake", deliciousness: 8500 },
-          { id: 3, name: "Strawberry Cake", deliciousness: 8000 },
+          { name: 'Chocolate Cake', deliciousness: 9001 },
+          { name: 'Vanilla Cake', deliciousness: 8500 },
+          { name: 'Strawberry Cake', deliciousness: 8000 },
         ],
         chart: {
-          data: {
-            labels: ['Chocolate Cake', 'Vanilla Cake', 'Strawberry Cake'],
-            datasets: [
-              {
-                label: 'Deliciousness Level',
-                data: [9001, 8500, 8000],
-                backgroundColor: 'rgba(53, 162, 235, 0.5)',
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            plugins: {
-              legend: {
-                position: 'top',
-              },
-              title: {
-                display: true,
-                text: 'Cake Deliciousness',
-              },
-            },
-          },
+          colors: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'], // For pie chart slices
         },
       };
       setResult(simulatedResult);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         { text: "Great! Here's the result:", isUser: false },
       ]);
     } else {
-      setMessages(prev => [...prev, { text: "I understand. Could you provide more details or clarify your request?", isUser: false }]);
+      setMessages((prev) => [
+        ...prev,
+        { text: 'I understand. Could you provide more details or clarify your request?', isUser: false },
+      ]);
     }
     setCurrentSteps([]);
   };
@@ -448,67 +578,89 @@ const ChatPage = () => {
       <TopNav />
       <div className="flex flex-grow overflow-hidden">
         <SideNav />
-        <main className="flex-grow p-4" style={{ paddingTop: '64px' }}>
+        <main className="flex-grow p-4" style={{ paddingTop: '120px' }}>
           <Container maxW="container.xl" h="full">
-            <VStack spacing={6} h="full">
-              <Heading as="h1" size="xl">Chat with GPT</Heading>
-              
-              <HStack w="full" spacing={4}>
-                {examplePrompts.map((prompt, index) => (
-                  <ExamplePrompt
+            <VStack spacing={6} h="full" align="center">
+              {showExamples && (
+                <HStack w="80%" spacing={4} justifyContent="center" alignItems="center" mx="auto">
+                  {examplePrompts.map((prompt, index) => (
+                    <Box
+                      key={index}
+                      p={4}
+                      w="full"
+                      borderWidth="1px"
+                      borderRadius="lg"
+                      onClick={() => setInputValue(prompt.prompt)}
+                      cursor="pointer"
+                      _hover={{ backgroundColor: 'gray.100' }}
+                    >
+                      <VStack align="left" spacing={2}>
+                        <Center w="50px" h="50px" bg="#F8F8F8" borderRadius="50%" mb={2}>
+                          <Image src={prompt.imageSrc} alt={`${prompt.title} icon`} boxSize="20px" />
+                        </Center>
+                        <Text fontWeight="bold" fontSize="lg" textAlign="left">
+                          {prompt.title}
+                        </Text>
+                        <Text fontSize="md" color="gray.500" textAlign="left">
+                          {prompt.prompt}
+                        </Text>
+                      </VStack>
+                    </Box>
+                  ))}
+                </HStack>
+              )}
+
+              <VStack flex={1} w="80%" overflowY="auto" spacing={4} alignItems="stretch" pb={4} mx="auto">
+                {messages.map((message, index) => (
+                  <ChatMessage
                     key={index}
-                    text={prompt}
-                    onClick={() => setInputValue(prompt)}
+                    message={message.text}
+                    isUser={message.isUser}
+                    onEdit={(newMessage) => handleEditMessage(index, newMessage)}
                   />
                 ))}
-              </HStack>
-              
-              <Divider />
-              
-              <VStack
-                flex={1}
-                w="full"
-                overflowY="auto"
-                spacing={4}
-                alignItems="stretch"
-                pb={4}
-              >
-                {messages.map((message, index) => (
-                  <ChatMessage key={index} message={message.text} isUser={message.isUser} />
-                ))}
+
                 {isWaitingForConfirmation && (
-                  <HStack justifyContent="center">
-                    <Text>Are these steps correct?</Text>
+                  <HStack w="full" justifyContent="center" alignItems="center" spacing={2}>
+                    <Text>Is it okay to proceed and generate using this logic?</Text>
                     <IconButton
-                      icon={<CheckIcon />}
-                      colorScheme="green"
-                      onClick={() => handleConfirmation(true)}
-                    />
-                    <IconButton
-                      icon={<CloseIcon />}
+                      size={'xs'}
+                      borderRadius={'full'}
+                      icon={<FaThumbsDown />}
                       colorScheme="red"
                       onClick={() => handleConfirmation(false)}
                     />
+                    <IconButton
+                      size={'xs'}
+                      borderRadius={'full'}
+                      icon={<FaThumbsUp />}
+                      colorScheme="green"
+                      onClick={() => handleConfirmation(true)}
+                    />
                   </HStack>
                 )}
+
                 {result && <ResultBox sql={result.sql} data={result.data} chart={result.chart} />}
               </VStack>
-              
-              <HStack as="form" w="full" onSubmit={(e) => { e.preventDefault(); handleSend(); }}>
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Type your message here..."
-                  size="lg"
-                />
-                <Button
-                  colorScheme="blue"
-                  onClick={handleSend}
-                  isDisabled={inputValue.trim() === '' || isWaitingForConfirmation}
-                  rightIcon={<ArrowForwardIcon />}
-                >
-                  Send
-                </Button>
+
+              <HStack as="form" w="80%" mb={2} onSubmit={(e) => e.preventDefault()} mx="auto">
+                <InputGroup size="lg">
+                  <Input
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder="Enter your message..."
+                  />
+                  <InputRightElement width="4.5rem">
+                    <IconButton
+                      bg={'transparent'}
+                      aria-label="Send"
+                      icon={<Image src="/send.png" boxSize="20px" alt="Send" />}
+                      onClick={handleSend}
+                      isDisabled={inputValue.trim() === '' || isWaitingForConfirmation}
+                      size="sm"
+                    />
+                  </InputRightElement>
+                </InputGroup>
               </HStack>
             </VStack>
           </Container>

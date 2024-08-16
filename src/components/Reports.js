@@ -26,13 +26,17 @@ import {
   IconButton,
   Tooltip,
   Select,
+  TableContainer,
+  LinkBox,
+  LinkOverlay,
 } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { FaThList, FaTh, FaSync, FaTrash } from 'react-icons/fa';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import TopNav from './TopNav';
 import SideNav from './SideNav';
-import { useAuth } from '../auth'; // Adjust path if necessary
+import { useAuth } from '../auth';
+import DetailedPage from './DetailedPage';
 
 const sampleReports = [
   { 
@@ -161,7 +165,7 @@ const ReportChart = ({ report, selectedChartType }) => {
   }
 };
 
-const ReportTiles = ({ reports }) => {
+const ReportTiles = ({ reports, onReportClick }) => {
   const [selectedChartTypes, setSelectedChartTypes] = useState(reports.map(report => report.type));
 
   const handleChartTypeChange = (index, value) => {
@@ -185,6 +189,7 @@ const ReportTiles = ({ reports }) => {
               opacity: 1,
             }
           }}
+          onClick={() => onReportClick(report)}
         >
           <VStack align="start" spacing={2}>
             <Heading size="md">{report.name}</Heading>
@@ -241,94 +246,177 @@ const ReportTiles = ({ reports }) => {
   );
 };
 
-const ReportTab = ({ title, reports }) => {
+const ReportTab = ({ title, reports, onBreadcrumbUpdate }) => {
   const [isListView, setIsListView] = useState(true);
+  const [selectedReport, setSelectedReport] = useState(null);
   const activeColor = useColorModeValue('blue.500', 'blue.200');
   const inactiveColor = useColorModeValue('gray.400', 'gray.600');
 
+  const handleReportClick = (report) => {
+    setSelectedReport(report);
+    onBreadcrumbUpdate(report.name);
+  };
+
   return (
     <Box>
-      <Flex justifyContent="space-between" alignItems="center" mb={4}>
-        <Heading size="md">{title}</Heading>
-        <Flex>
-          <Tooltip label="List view">
-            <IconButton icon={<FaThList />} aria-label="List view" mr={2} onClick={() => setIsListView(true)} color={isListView ? activeColor : inactiveColor} variant="ghost" />
-          </Tooltip>
-          <Tooltip label="Grid view">
-            <IconButton icon={<FaTh />} aria-label="Grid view" onClick={() => setIsListView(false)} color={!isListView ? activeColor : inactiveColor} variant="ghost" />
-          </Tooltip>
-        </Flex>
-      </Flex>
-      {isListView ? <ReportList reports={reports} /> : <ReportTiles reports={reports} />}
+      {selectedReport ? (
+        <DetailedPage report={selectedReport} />
+      ) : (
+        <>
+          <Flex justifyContent="space-between" alignItems="center" mb={4}>
+            <Heading size="md">{title}</Heading>
+            <Flex>
+              <Tooltip label="List view">
+                <IconButton icon={<FaThList />} aria-label="List view" mr={2} onClick={() => setIsListView(true)} color={isListView ? activeColor : inactiveColor} variant="ghost" />
+              </Tooltip>
+              <Tooltip label="Grid view">
+                <IconButton icon={<FaTh />} aria-label="Grid view" onClick={() => setIsListView(false)} color={!isListView ? activeColor : inactiveColor} variant="ghost" />
+              </Tooltip>
+            </Flex>
+          </Flex>
+          {isListView ? (
+            <ReportList reports={reports} onReportClick={handleReportClick} />
+          ) : (
+            <ReportTiles reports={reports} onReportClick={handleReportClick} />
+          )}
+        </>
+      )}
     </Box>
   );
 };
 
-const ReportList = ({ reports }) => {
+const ReportList = ({ reports, onReportClick }) => {
   const hoverBgColor = useColorModeValue('gray.100', 'gray.700');
 
   return (
-    <Table variant="simple">
-      <Thead>
-        <Tr>
-          <Th>Report Name</Th>
-          <Th>Requested By</Th>
-          <Th>Pending Since</Th>
-          <Th>Short Description</Th>
-          <Th>Actions</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {reports.map((report, index) => (
-          <Tr key={index} _hover={{ backgroundColor: hoverBgColor }} sx={{ '& .report-actions': { opacity: 0, transition: 'opacity 0.3s ease' }, '&:hover .report-actions': { opacity: 1 } }}>
-            <Td>{report.name}</Td>
-            <Td>{report.requestedBy}</Td>
-            <Td>{report.pendingSince}</Td>
-            <Td>{report.description}</Td>
-            <Td>
-              <HStack spacing={2} justifyContent="flex-end" className="report-actions">
-                <Tooltip label="Refresh" aria-label="Refresh">
-                  <IconButton icon={<FaSync />} aria-label="Refresh" size="sm" variant="ghost" />
-                </Tooltip>
-                <Tooltip label="Delete" aria-label="Delete">
-                  <IconButton icon={<FaTrash />} aria-label="Delete" size="sm" variant="ghost" colorScheme='red' />
-                </Tooltip>
-              </HStack>
-            </Td>
+    <TableContainer boxShadow="lg" borderRadius="lg">
+      <Table variant="simple" size="md">
+        <Thead bg="gray.100">
+          <Tr>
+            <Th fontSize="md">Report Name</Th>
+            <Th fontSize="md">Requested By</Th>
+            <Th fontSize="md">Pending Since</Th>
+            <Th fontSize="md">Short Description</Th>
+            <Th fontSize="md"></Th>
           </Tr>
-        ))}
-      </Tbody>
-    </Table>
+        </Thead>
+        <Tbody>
+          {reports.map((report, index) => (
+            <Tr
+              key={index}
+              _hover={{ bg: hoverBgColor, cursor: 'pointer' }}
+              transition="all 0.2s"
+              sx={{
+                '& .report-actions': { opacity: 0, transition: 'opacity 0.3s ease' },
+                '&:hover .report-actions': { opacity: 1 },
+              }}
+              onClick={() => onReportClick(report)}
+            >
+              <Td fontWeight="medium">
+                <LinkBox>
+                  <LinkOverlay href="#" onClick={(e) => e.preventDefault()}>{report.name}</LinkOverlay>
+                </LinkBox>
+              </Td>
+              <Td>{report.requestedBy}</Td>
+              <Td>
+                <Text fontSize="sm" color="gray.600">
+                  {report.pendingSince}
+                </Text>
+              </Td>
+              <Td>
+                <Text fontSize="sm" color="gray.600">
+                  {report.description}
+                </Text>
+              </Td>
+              <Td>
+                <HStack spacing={2} justifyContent="flex-end" className="report-actions">
+                  <Tooltip label="Refresh" aria-label="Refresh">
+                    <IconButton
+                      icon={<FaSync />}
+                      aria-label="Refresh"
+                      size="sm"
+                      variant="ghost"
+                    />
+                  </Tooltip>
+                  <Tooltip label="Delete" aria-label="Delete">
+                    <IconButton
+                      icon={<FaTrash />}
+                      aria-label="Delete"
+                      size="sm"
+                      variant="ghost"
+                      colorScheme="red"
+                    />
+                  </Tooltip>
+                </HStack>
+              </Td>
+            </Tr>
+          ))}
+        </Tbody>
+      </Table>
+    </TableContainer>
   );
 };
 
 const Reports = () => {
   const { isSignedIn } = useAuth(); // Check if the user is signed in
   const bgColor = useColorModeValue('white', 'gray.800');
+  const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
+
+  // State to manage the current breadcrumb
+  const [breadcrumbItems, setBreadcrumbItems] = useState([
+    { label: 'Reports', href: '/reports' },
+  ]);
 
   const pendingReports = sampleReports.filter(report => report.status === 'Pending').slice(0, 3);
   const verifiedReports = sampleReports.filter(report => report.status === 'Completed').slice(0, 2);
   const trainingDataReports = sampleReports.filter(report => report.status === 'In Progress').slice(0, 1);
+
+  const handleTabChange = (index) => {
+    const tabLabels = ['Pending', 'Verified', 'Training Data'];
+    setBreadcrumbItems([
+      { label: 'Reports', href: '/reports' },
+      { label: tabLabels[index], href: '/reports' },
+    ]);
+  };
+
+  const handleBreadcrumbUpdate = (reportName) => {
+    setBreadcrumbItems((prevItems) => [
+      ...prevItems,
+      { label: reportName, href: '#' },
+    ]);
+  };
 
   return (
     <div className="Dashboard flex flex-col h-screen">
       <TopNav />
       <div className="flex flex-grow overflow-hidden">
         <SideNav />
-        <main className="flex-grow p-4" style={{ paddingTop: '64px' }}>
-          <Box bg={bgColor} p={4} rounded="md" shadow="sm">
-            <Breadcrumb spacing="8px" separator={<ChevronRightIcon color="gray.500" />}>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/">Home</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem isCurrentPage>
-                <BreadcrumbLink href="#">Reports</BreadcrumbLink>
-              </BreadcrumbItem>
-            </Breadcrumb>
+        <main className="flex-grow p-4" style={{ paddingTop: '110px' }}>
+          <Box bg={bgColor} p={4} rounded="md">
+            <Box mt={4}>
+              <Breadcrumb
+                spacing="8px"
+                separator={<ChevronRightIcon color={breadcrumbColor} boxSize="18px" />}
+                fontSize="lg"
+                color={breadcrumbColor}
+              >
+                {breadcrumbItems.map((item, index) => (
+                  <BreadcrumbItem key={index} isCurrentPage={index === breadcrumbItems.length - 1}>
+                    {index === breadcrumbItems.length - 1 ? (
+                      <Text fontWeight="semibold" fontSize="lg">{item.label}</Text>
+                    ) : (
+                      item.href ? (
+                        <BreadcrumbLink href={item.href} fontSize="lg">{item.label}</BreadcrumbLink>
+                      ) : (
+                        <Text fontSize="lg">{item.label}</Text>
+                      )
+                    )}
+                  </BreadcrumbItem>
+                ))}
+              </Breadcrumb>
+            </Box>
 
-            <Heading as="h1" size="xl" mt={4} mb={6}>Reports</Heading>
-
-            <Tabs colorScheme="blue" isLazy>
+            <Tabs colorScheme="blue" isLazy onChange={handleTabChange}>
               <TabList>
                 <Tab>
                   <Flex alignItems="center">
@@ -351,13 +439,13 @@ const Reports = () => {
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <ReportTab title="Pending Reports" reports={pendingReports} />
+                  <ReportTab reports={pendingReports} onBreadcrumbUpdate={handleBreadcrumbUpdate} />
                 </TabPanel>
                 <TabPanel>
-                  <ReportTab title="Verified Reports" reports={verifiedReports} />
+                  <ReportTab reports={verifiedReports} onBreadcrumbUpdate={handleBreadcrumbUpdate} />
                 </TabPanel>
                 <TabPanel>
-                  <ReportTab title="Training Data Reports" reports={trainingDataReports} />
+                  <ReportTab reports={trainingDataReports} onBreadcrumbUpdate={handleBreadcrumbUpdate} />
                 </TabPanel>
               </TabPanels>
             </Tabs>

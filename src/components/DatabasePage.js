@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   Box, 
-  Heading, 
   Tabs, 
   TabList, 
   TabPanels, 
@@ -27,17 +26,19 @@ import {
   ModalCloseButton,
   ModalBody,
   ModalFooter,
-  Input,
   HStack,
   IconButton,
   Image,
   Tooltip,
   Textarea,
+  LinkBox,
+  LinkOverlay,
 } from '@chakra-ui/react';
 import { ChevronRightIcon, RepeatIcon, DeleteIcon } from '@chakra-ui/icons';
 import TopNav from './TopNav';
 import SideNav from './SideNav';
 import { useAuth } from '../auth'; // Adjust path if necessary
+import SchemaPage from './SchemaPage'; // Import the SchemaPage component
 
 const AnotherPage = () => {
   const { isSignedIn } = useAuth(); // Check if the user is signed in
@@ -48,6 +49,15 @@ const AnotherPage = () => {
   const [currentDescription, setCurrentDescription] = useState('');
   const [selectedRowIndex, setSelectedRowIndex] = useState(null);
   
+  // State to control which component to display in the Schema tab
+  const [showSchemaPage, setShowSchemaPage] = useState(false);
+
+  // State to track the current tab for breadcrumb updates
+  const [currentTab, setCurrentTab] = useState('Schema');
+
+  // State to track whether the "Table" breadcrumb item should be displayed
+  const [showTableBreadcrumb, setShowTableBreadcrumb] = useState(false);
+
   // Table data as a state variable
   const [tableData, setTableData] = useState([
     {
@@ -112,98 +122,151 @@ const AnotherPage = () => {
     setTableData(tableData.filter((_, i) => i !== index));
   };
 
+  // Function to show the SchemaPage component and add "Table" to the breadcrumb
+  const showSchema = () => {
+    setShowSchemaPage(true);
+    setShowTableBreadcrumb(true);  // Add "Table" to the breadcrumb
+  };
+
+  const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
+
+  // Function to update the current breadcrumb based on the selected tab
+  const getCurrentBreadcrumb = () => {
+    switch (currentTab) {
+      case 'Schema':
+        return 'Schema';
+      case 'Settings':
+        return 'Settings';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="Dashboard flex flex-col h-screen">
       <TopNav />
       <div className="flex flex-grow overflow-hidden">
         <SideNav />
-        <main className="flex-grow p-4" style={{ paddingTop: '64px' }}>
-          <Box maxWidth="90%" mx="auto" pt={12}>
-            <Breadcrumb spacing="8px" separator={<ChevronRightIcon color="gray.500" />} mb={4}>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/another-page">Databases</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem isCurrentPage>
-                <BreadcrumbLink href="#">NebulaStore</BreadcrumbLink>
-              </BreadcrumbItem>
-            </Breadcrumb>
+        <main className="flex-grow p-4" style={{ paddingTop: '120px' }}>
+          <Box maxWidth="90%" mx="auto" >
+          <Box mt={4}>
+  <Breadcrumb
+    spacing="8px"
+    separator={<ChevronRightIcon color={breadcrumbColor} boxSize="18px" />}
+    fontSize="lg"
+    color={breadcrumbColor}
+  >
+    <BreadcrumbItem>
+      <BreadcrumbLink href="/" fontSize="lg">Connection</BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbItem>
+      <BreadcrumbLink href="/" fontSize="lg">Database Configuration</BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbItem>
+      <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">Schema</BreadcrumbLink>
+    </BreadcrumbItem>
+    {showTableBreadcrumb && (
+      <BreadcrumbItem>
+        <BreadcrumbLink href="#" fontSize="lg">Table</BreadcrumbLink>
+      </BreadcrumbItem>
+    )}
+  </Breadcrumb>
+</Box>
 
-      
 
-            <Tabs pt={12}>
+
+            <Tabs pt={12} onChange={(index) => setCurrentTab(index === 0 ? 'Schema' : 'Settings')}>
               <TabList mb="1em">
                 <Tab>Schema</Tab>
                 <Tab>Settings</Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                <Text fontSize="md" color="gray.600" mb={6} align={'left'}>
-            This is the schema for the database. Adding a detailed description will help the AI provide more accurate responses, and we can assist in generating this description.
-            </Text>
-                  <TableContainer boxShadow="lg" borderRadius="lg">
-                    <Table variant="simple" size="md">
-                      <Thead bg="gray.100">
-                        <Tr>
-                          <Th fontSize="md">Database Name</Th>
-                          <Th fontSize="md">Description</Th>
-                          <Th fontSize="md">Date Created</Th>
-                          <Th fontSize="md" ></Th> {/* New column for actions */}
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-  {tableData.map((row, index) => (
-    <Tr
-      key={index}
-      _hover={{ bg: 'gray.50', '.action-icons': { opacity: 1 } }} // Only show icons on row hover
-      transition="all 0.2s"
-    >
-      <Td fontWeight="medium">{row.databaseName}</Td>
-      <Td>
-        <Button 
-          size="sm" 
-          variant="link"
-          color={'gray.600'}
-          onClick={() => openModal(index)}
-          _hover={{ bg: 'transparent' }}
-          _focus={{ boxShadow: 'none' }}
-        >
-          {row.description || '+ Add Description'}
-        </Button>
-      </Td>
-      <Td>
-        <Text fontSize="sm" color="gray.600">
-          {row.dateCreated}
-        </Text>
-      </Td>
-      <Td textAlign="right">
-        <HStack 
-          spacing={2}
-          justify="flex-end"
-          className="action-icons" // Class to identify this HStack
-          opacity={0} // Hidden by default
-          transition="opacity 0.2s"
-        >
-          <IconButton 
-            size="sm"
-            icon={<RepeatIcon />} 
-            onClick={() => handleRefresh(index)} 
-            aria-label="Refresh"
-          />
-          <IconButton 
-            size="sm"
-            icon={<DeleteIcon />} 
-            onClick={() => handleDelete(index)} 
-            aria-label="Delete"
-            color='red.500'
-          />
-        </HStack>
-      </Td>
-    </Tr>
-  ))}
-</Tbody>
-
-                    </Table>
-                  </TableContainer>
+                  {/* Conditional rendering inside the Schema tab */}
+                  {!showSchemaPage ? (
+                    <>
+                      <Text fontSize="md" color="gray.600" mb={6} align={'left'}>
+                        This is the schema for the database. Adding a detailed description will help the AI provide more accurate responses, and we can assist in generating this description.
+                      </Text>
+                      <TableContainer boxShadow="lg" borderRadius="lg">
+                        <Table variant="simple" size="md">
+                          <Thead bg="gray.100">
+                            <Tr>
+                              <Th fontSize="md">Database Name</Th>
+                              <Th fontSize="md">Description</Th>
+                              <Th fontSize="md">Date Created</Th>
+                              <Th fontSize="md"></Th> {/* New column for actions */}
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {tableData.map((row, index) => (
+                              <Tr
+                                key={index}
+                                _hover={{ bg: 'gray.50' }}
+                                transition="all 0.2s"
+                              >
+                                <Td fontWeight="medium">
+                                  <LinkBox onClick={showSchema}>
+                                    <LinkOverlay href="#">{row.databaseName}</LinkOverlay>
+                                  </LinkBox>
+                                </Td>
+                                <Td>
+                                  <Button 
+                                    size="sm" 
+                                    variant="link"
+                                    color={'gray.600'}
+                                    onClick={(e) => {
+                                      e.stopPropagation(); // Prevent row click event
+                                      openModal(index);
+                                    }}
+                                    _hover={{ bg: 'transparent' }}
+                                    _focus={{ boxShadow: 'none' }}
+                                  >
+                                    {row.description || '+ Add Description'}
+                                  </Button>
+                                </Td>
+                                <Td>
+                                  <Text fontSize="sm" color="gray.600">
+                                    {row.dateCreated}
+                                  </Text>
+                                </Td>
+                                <Td textAlign="right">
+                                  <HStack 
+                                    spacing={2}
+                                    justify="flex-end"
+                                    opacity={1} // Ensure icons are always visible
+                                    transition="opacity 0.2s"
+                                  >
+                                    <IconButton 
+                                      size="sm"
+                                      icon={<RepeatIcon />} 
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent row click event
+                                        handleRefresh(index);
+                                      }} 
+                                      aria-label="Refresh"
+                                    />
+                                    <IconButton 
+                                      size="sm"
+                                      icon={<DeleteIcon />} 
+                                      onClick={(e) => {
+                                        e.stopPropagation(); // Prevent row click event
+                                        handleDelete(index);
+                                      }} 
+                                      aria-label="Delete"
+                                      color='red.500'
+                                    />
+                                  </HStack>
+                                </Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    </>
+                  ) : (
+                    <SchemaPage />
+                  )}
                 </TabPanel>
                 <TabPanel>
                   <Text>Settings content goes here.</Text>
@@ -227,29 +290,28 @@ const AnotherPage = () => {
                 <ModalFooter>
                   <HStack spacing={4} w="full" justify="space-between">
                     <Tooltip label="Generate description using AI" aria-label='A tooltip' hasArrow placement='bottom-start'>
-                    <Button 
+                      <Button 
                         onClick={generateAIDescription}
                         leftIcon={<Image src="/ai-logo.png" boxSize="30px" alt="AI Icon" />} // Replace with your image path
                         bg="transparent"  // Set the background to transparent
                         _hover={{ bg: "transparent" }}  // Ensure background remains transparent on hover
                         _active={{ bg: "transparent" }}  // Ensure background remains transparent when active
-                        >
+                      >
                         {/* Optionally, add text or leave it empty */}
-                    </Button>
+                      </Button>
                     </Tooltip>
                     <div>
-                    <Button variant="ghost" onClick={closeModal} mr={5}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      bg="black"        // Set the background color to black
-                      color="white"     // Set the text color to white for contrast
-                      _hover={{ bg: "gray.800" }}  // Optionally, darken the button on hover
-                      onClick={saveDescription}
-                    >
-                      Save
-                    </Button>
-
+                      <Button variant="ghost" onClick={closeModal} mr={5}>
+                        Cancel
+                      </Button>
+                      <Button 
+                        bg="black"        // Set the background color to black
+                        color="white"     // Set the text color to white for contrast
+                        _hover={{ bg: "gray.800" }}  // Optionally, darken the button on hover
+                        onClick={saveDescription}
+                      >
+                        Save
+                      </Button>
                     </div>
                   </HStack>
                 </ModalFooter>

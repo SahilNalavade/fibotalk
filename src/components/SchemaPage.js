@@ -161,23 +161,10 @@ const AnotherPage = () => {
   };
 
   return (
-    <div className="Dashboard flex flex-col h-screen">
-      <TopNav />
-      <div className="flex flex-grow overflow-hidden">
-        <SideNav />
-        <main className="flex-grow p-4" style={{ paddingTop: '64px' }}>
-          <Box maxWidth="90%" mx="auto" pt={12}>
-            <Breadcrumb spacing="8px" separator={<ChevronRightIcon color="gray.500" />} mb={4}>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/another-page">Connection</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem isCurrentPage>
-                <BreadcrumbLink href="#">NebulaStore</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbItem isCurrentPage>
-                <BreadcrumbLink href="#">SchemaName</BreadcrumbLink>
-              </BreadcrumbItem>
-            </Breadcrumb>
+   
+        <main className="flex-grow p-4" >
+          <Box  mx="auto" >
+      
 
             <Text fontSize="md" color="gray.600" mb={6} align={'left'}>
               This is the schema for the database. Adding a detailed description will help the AI provide more accurate responses, and we can assist in generating this description.
@@ -366,8 +353,7 @@ const AnotherPage = () => {
             </Modal>
           </Box>
         </main>
-      </div>
-    </div>
+    
   );
 };
 

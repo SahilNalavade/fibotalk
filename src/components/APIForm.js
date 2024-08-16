@@ -10,12 +10,13 @@ import {
   Box,
   Select,
   useColorModeValue,
-  Center,
   Text,
-  useToast
+  useToast,
+  IconButton,
 } from '@chakra-ui/react';
+import { ArrowBackIcon } from '@chakra-ui/icons';
 
-const APIForm = () => {
+const APIForm = ({ onBack }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [formData, setFormData] = useState({
     service: '',
@@ -52,13 +53,22 @@ const APIForm = () => {
   };
 
   const handleCancel = () => {
-    // Handle form reset or navigation here
     console.log('Form cancelled');
   };
 
   return (
     <Box width="70%" margin="auto" padding="6" pt={10} borderRadius="lg" boxShadow="xl" bg={boxBgColor} mt={10}>
       <VStack spacing={8} align="stretch">
+        <HStack justify="flex-start" spacing={4}>
+          <IconButton
+            icon={<ArrowBackIcon />}
+            aria-label="Go back"
+            onClick={onBack}
+            variant="ghost"
+          />
+          <Text fontSize="lg" fontWeight="bold">API Configuration</Text>
+        </HStack>
+
         <HStack spacing={6}>
           <FormControl display="flex" alignItems="center">
             <FormLabel htmlFor="enable-api-key" mb="0">
@@ -69,57 +79,50 @@ const APIForm = () => {
               isChecked={isEnabled}
               onChange={() => setIsEnabled(!isEnabled)}
             />
-            
           </FormControl>
-          
         </HStack>
-        {/* <Text fontSize="md" color="gray.600">
-              Enable API Key to access the selected service.
-            </Text> */}
 
-        {isEnabled && (
-          <>
+        <FormControl id="service" isRequired>
+          <FormLabel>Service</FormLabel>
+          <Select
+            placeholder="Select a service"
+            size="lg"
+            value={formData.service}
+            onChange={(e) => setFormData({ ...formData, service: e.target.value })}
+            isDisabled={!isEnabled}
+          >
+            <option value="ChatGPT4">ChatGPT4</option>
+            {/* Add more options if needed */}
+          </Select>
+        </FormControl>
 
-            <FormControl id="service" isRequired>
-              <FormLabel>Service</FormLabel>
-              <Select
-                placeholder="Select a service"
-                size="lg"
-                value={formData.service}
-                onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-              >
-                <option value="ChatGPT4">ChatGPT4</option>
-                {/* Add more options if needed */}
-              </Select>
-            </FormControl>
+        <FormControl id="api-key-name" isRequired>
+          <FormLabel>API Key Name</FormLabel>
+          <Input
+            placeholder="Enter API key name"
+            size="lg"
+            value={formData.apiKeyName}
+            onChange={(e) => setFormData({ ...formData, apiKeyName: e.target.value })}
+            isDisabled={!isEnabled}
+          />
+        </FormControl>
 
-            <FormControl id="api-key-name" isRequired>
-              <FormLabel>API Key Name</FormLabel>
-              <Input
-                placeholder="Enter API key name"
-                size="lg"
-                value={formData.apiKeyName}
-                onChange={(e) => setFormData({ ...formData, apiKeyName: e.target.value })}
-              />
-            </FormControl>
-
-            <FormControl id="api-key" isRequired>
-              <FormLabel>API Key</FormLabel>
-              <Input
-                placeholder="Enter API key"
-                size="lg"
-                value={formData.apiKey}
-                onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-              />
-            </FormControl>
-          </>
-        )}
+        <FormControl id="api-key" isRequired>
+          <FormLabel>API Key</FormLabel>
+          <Input
+            placeholder="Enter API key"
+            size="lg"
+            value={formData.apiKey}
+            onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
+            isDisabled={!isEnabled}
+          />
+        </FormControl>
 
         <HStack spacing={6} justify="center">
           <Button colorScheme="gray" size="md" onClick={handleCancel}>
             Cancel
           </Button>
-          <Button colorScheme="blue" size="md" onClick={handleSave}>
+          <Button colorScheme="blue" size="md" onClick={handleSave} isDisabled={!isEnabled}>
             Save
           </Button>
         </HStack>
