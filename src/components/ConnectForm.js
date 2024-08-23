@@ -53,7 +53,7 @@ const ConnectForm = () => {
   const databaseServers = [
     { value: 'BigQuery', label: 'BigQuery', logo: '/bigquery.png' },
     { value: 'RedShift', label: 'RedShift', logo: '/redshift.png' },
-    { value: 'SnowFlake', label: 'SnowFlake', logo: '/snowflake.png' },
+    { value: 'SnowFlake', label: 'SnowFlake', logo: '/Snowflake.png' },
   ];
 
   const handleSave = () => {
