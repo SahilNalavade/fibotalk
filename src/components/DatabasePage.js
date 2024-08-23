@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { 
-  Box, 
-  Tabs, 
-  TabList, 
-  TabPanels, 
-  Tab, 
-  TabPanel, 
+import React, { useState, useRef } from 'react';
+import {
+  Box,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
   useColorModeValue,
   Breadcrumb,
   BreadcrumbItem,
@@ -33,22 +33,36 @@ import {
   Textarea,
   LinkBox,
   LinkOverlay,
+  Input,
+  Checkbox,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
+  InputGroup,
+  InputLeftElement,
 } from '@chakra-ui/react';
-import { ChevronRightIcon, RepeatIcon, DeleteIcon } from '@chakra-ui/icons';
+import { ChevronRightIcon, RepeatIcon, DeleteIcon, ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
+import { FaSortAlphaDown, FaSortAlphaUpAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+
 import TopNav from './TopNav';
 import SideNav from './SideNav';
-import { useAuth } from '../auth'; // Adjust path if necessary
-import SchemaPage from './SchemaPage'; // Import the SchemaPage component
+import { useAuth } from '../auth';
+import SchemaPage from './SchemaPage';
+import EditForm from './EditForm';
 
 const AnotherPage = () => {
   const { isSignedIn } = useAuth(); // Check if the user is signed in
   const tabBg = useColorModeValue('gray.100', 'gray.700');
-  
+  const navigate = useNavigate(); // Use the useNavigate hook for navigation
+
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentDescription, setCurrentDescription] = useState('');
   const [selectedRowIndex, setSelectedRowIndex] = useState(null);
-  
+
   // State to control which component to display in the Schema tab
   const [showSchemaPage, setShowSchemaPage] = useState(false);
 
@@ -64,18 +78,33 @@ const AnotherPage = () => {
       databaseName: 'Test_User_List',
       description: '',
       dateCreated: '01/01/2022',
+      status: 'active', // Status field
     },
     {
       databaseName: 'User_Event_Track',
       description: '',
       dateCreated: '05/03/2022',
+      status: 'active', // Status field
     },
     {
       databaseName: 'HyperionDB',
       description: '',
       dateCreated: '12/06/2022',
+      status: 'active', // Status field
     },
   ]);
+
+  // State to manage the dropdown search functionality
+  const [searchText, setSearchText] = useState('');
+  const [selectedSources, setSelectedSources] = useState([]);
+  const [sortOrder, setSortOrder] = useState(null); // State to track sorting order
+  const [descriptionSearchText, setDescriptionSearchText] = useState('');
+  const [descriptionSortOrder, setDescriptionSortOrder] = useState(null);
+
+  const inputRef = useRef(); // Use ref to manage focus manually
+
+  // New state to track hovered row index
+  const [hoveredRowIndex, setHoveredRowIndex] = useState(null);
 
   // Function to handle opening the modal
   const openModal = (index) => {
@@ -115,17 +144,13 @@ const AnotherPage = () => {
     // Add logic to refresh the row data
   };
 
-  // Function to handle delete (mock implementation)
+  // Function to handle delete/change status
   const handleDelete = (index) => {
-    console.log(`Deleting row ${index}`);
-    // Add logic to delete the row
-    setTableData(tableData.filter((_, i) => i !== index));
-  };
-
-  // Function to show the SchemaPage component and add "Table" to the breadcrumb
-  const showSchema = () => {
-    setShowSchemaPage(true);
-    setShowTableBreadcrumb(true);  // Add "Table" to the breadcrumb
+    console.log(`Changing status of row ${index}`);
+    const updatedTableData = tableData.map((row, i) =>
+      i === index ? { ...row, status: row.status === 'active' ? 'inactive' : 'active' } : row
+    );
+    setTableData(updatedTableData);
   };
 
   const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
@@ -142,38 +167,108 @@ const AnotherPage = () => {
     }
   };
 
+  // Function to handle search and filter the table data
+  const filteredTableData = tableData.filter(
+    (row) =>
+      row.databaseName.toLowerCase().includes(searchText.toLowerCase()) &&
+      row.description.toLowerCase().includes(descriptionSearchText.toLowerCase())
+  );
+
+  // Function to handle search input change and update searchText
+  const handleSearchChange = (e) => {
+    setSearchText(e.target.value);
+  };
+
+  const handleDescriptionSearchChange = (e) => {
+    setDescriptionSearchText(e.target.value);
+  };
+
+  // Function to handle checkbox changes
+  const handleCheckboxChange = (databaseName, isChecked) => {
+    if (isChecked) {
+      setSelectedSources([...selectedSources, databaseName]);
+    } else {
+      setSelectedSources(selectedSources.filter((name) => name !== databaseName));
+    }
+  };
+
+  // Function to handle sorting of the table data by database name
+  const toggleSortOrder = () => {
+    let sortedData;
+    if (sortOrder === 'asc') {
+      sortedData = [...filteredTableData].sort((a, b) =>
+        a.databaseName.toLowerCase() > b.databaseName.toLowerCase() ? -1 : 1
+      );
+      setSortOrder('desc');
+    } else {
+      sortedData = [...filteredTableData].sort((a, b) =>
+        a.databaseName.toLowerCase() < b.databaseName.toLowerCase() ? -1 : 1
+      );
+      setSortOrder('asc');
+    }
+    setTableData(sortedData);
+  };
+
+  // Function to handle sorting of the table data by description
+  const toggleDescriptionSortOrder = () => {
+    let sortedData;
+    if (descriptionSortOrder === 'asc') {
+      sortedData = [...filteredTableData].sort((a, b) =>
+        a.description.toLowerCase() > b.description.toLowerCase() ? -1 : 1
+      );
+      setDescriptionSortOrder('desc');
+    } else {
+      sortedData = [...filteredTableData].sort((a, b) =>
+        a.description.toLowerCase() < b.description.toLowerCase() ? -1 : 1
+      );
+      setDescriptionSortOrder('asc');
+    }
+    setTableData(sortedData);
+  };
+
+  // Function to handle row click and navigate to the /schema-page
+  const handleRowClick = () => {
+    navigate('/DatabasePagec'); // Redirect to /schema-page
+  };
+
   return (
     <div className="Dashboard flex flex-col h-screen">
       <TopNav />
       <div className="flex flex-grow overflow-hidden">
         <SideNav />
         <main className="flex-grow p-4" style={{ paddingTop: '105px' }}>
-          <Box maxWidth="90%" mx="auto" >
-          <Box mt={4}>
-  <Breadcrumb
-    spacing="8px"
-    separator={<ChevronRightIcon color={breadcrumbColor} boxSize="18px" />}
-    fontSize="lg"
-    color={breadcrumbColor}
-  >
-    <BreadcrumbItem>
-      <BreadcrumbLink href="/" fontSize="lg">Connection</BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbItem>
-      <BreadcrumbLink href="/" fontSize="lg">Database Configuration</BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbItem>
-      <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">Schema</BreadcrumbLink>
-    </BreadcrumbItem>
-    {showTableBreadcrumb && (
-      <BreadcrumbItem>
-        <BreadcrumbLink href="#" fontSize="lg">Table</BreadcrumbLink>
-      </BreadcrumbItem>
-    )}
-  </Breadcrumb>
-</Box>
-
-
+          <Box maxWidth="90%" mx="auto">
+            <Box mt={4}>
+              <Breadcrumb
+                spacing="8px"
+                separator={<ChevronRightIcon color={breadcrumbColor} boxSize="18px" />}
+                fontSize="lg"
+                color={breadcrumbColor}
+              >
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/" fontSize="lg">
+                    Connection
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/" fontSize="lg">
+                    Database Configuration
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">
+                    Schema
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                {showTableBreadcrumb && (
+                  <BreadcrumbItem>
+                    <BreadcrumbLink href="#" fontSize="lg">
+                      Table
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                )}
+              </Breadcrumb>
+            </Box>
 
             <Tabs pt={12} onChange={(index) => setCurrentTab(index === 0 ? 'Schema' : 'Settings')}>
               <TabList mb="1em">
@@ -192,31 +287,145 @@ const AnotherPage = () => {
                         <Table variant="simple" size="md">
                           <Thead bg="gray.100">
                             <Tr>
-                              <Th fontSize="md">Database Name</Th>
-                              <Th fontSize="md">Description</Th>
+                              <Th>
+                                <HStack spacing={4}>
+                                  <Menu closeOnSelect={false} autoSelect={false}>
+                                    <MenuButton
+                                      as={Button}
+                                      rightIcon={<ChevronDownIcon />}
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      Schema Name
+                                    </MenuButton>
+                                    <MenuList maxH="300px" overflowY="auto">
+                                      <MenuItem>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={toggleSortOrder}
+                                          rightIcon={sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
+                                        >
+                                        </Button>
+                                        <InputGroup>
+                                          <InputLeftElement pointerEvents="none">
+                                            <SearchIcon color="gray.400" />
+                                          </InputLeftElement>
+                                          <Input
+                                            ref={inputRef}
+                                            placeholder="Filter by name.."
+                                            value={searchText}
+                                            onChange={handleSearchChange}
+                                            mb={2}
+                                            autoFocus
+                                            onClick={(e) => e.stopPropagation()}
+                                            onBlur={(e) => {
+                                              if (e.relatedTarget) {
+                                                e.preventDefault();
+                                                inputRef.current.focus();
+                                              }
+                                            }}
+                                          />
+                                        </InputGroup>
+                                      </MenuItem>
+                                      <MenuDivider />
+                                      {filteredTableData.map((row, index) => (
+                                        <MenuItem key={index}>
+                                          <Checkbox
+                                            isChecked={selectedSources.includes(row.databaseName)}
+                                            onChange={(e) => handleCheckboxChange(row.databaseName, e.target.checked)}
+                                          >
+                                            {row.databaseName}
+                                          </Checkbox>
+                                        </MenuItem>
+                                      ))}
+                                    </MenuList>
+                                  </Menu>
+                                </HStack>
+                              </Th>
+                              <Th fontSize="md">
+                                <HStack spacing={4}>
+                                  <Menu closeOnSelect={false} autoSelect={false}>
+                                    <MenuButton
+                                      as={Button}
+                                      rightIcon={<ChevronDownIcon />}
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      Description
+                                    </MenuButton>
+                                    <MenuList maxH="300px" overflowY="auto">
+                                      <MenuItem>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={toggleDescriptionSortOrder}
+                                          rightIcon={descriptionSortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
+                                        >
+                                        </Button>
+                                        <InputGroup>
+                                          <InputLeftElement pointerEvents="none">
+                                            <SearchIcon color="gray.400" />
+                                          </InputLeftElement>
+                                          <Input
+                                            placeholder="Filter by description.."
+                                            value={descriptionSearchText}
+                                            onChange={handleDescriptionSearchChange}
+                                            mb={2}
+                                            autoFocus
+                                            onClick={(e) => e.stopPropagation()}
+                                            onBlur={(e) => {
+                                              if (e.relatedTarget) {
+                                                e.preventDefault();
+                                                inputRef.current.focus();
+                                              }
+                                            }}
+                                          />
+                                        </InputGroup>
+                                      </MenuItem>
+                                      <MenuDivider />
+                                      {filteredTableData.map((row, index) => (
+                                        <MenuItem key={index}>
+                                          <Checkbox
+                                            isChecked={selectedSources.includes(row.description)}
+                                            onChange={(e) => handleCheckboxChange(row.description, e.target.checked)}
+                                          >
+                                            {row.description || 'No Description'}
+                                          </Checkbox>
+                                        </MenuItem>
+                                      ))}
+                                    </MenuList>
+                                  </Menu>
+                                </HStack>
+                              </Th>
+                              <Th fontSize="md">Status</Th> {/* New status column */}
                               <Th fontSize="md">Date Created</Th>
                               <Th fontSize="md"></Th> {/* New column for actions */}
                             </Tr>
                           </Thead>
                           <Tbody>
-                            {tableData.map((row, index) => (
+                            {filteredTableData.map((row, index) => (
                               <Tr
                                 key={index}
                                 _hover={{ bg: 'gray.50' }}
                                 transition="all 0.2s"
+                                onMouseEnter={() => setHoveredRowIndex(index)}
+                                onMouseLeave={() => setHoveredRowIndex(null)}
+                                bg={row.status === 'inactive' ? 'gray.200' : 'inherit'} // Gray out the row if inactive
+                                opacity={row.status === 'inactive' ? 0.6 : 1} // Reduce opacity if inactive
                               >
                                 <Td fontWeight="medium">
-                                  <LinkBox onClick={showSchema}>
-                                    <LinkOverlay href="#">{row.databaseName}</LinkOverlay>
+                                  <LinkBox>
+                                    <LinkOverlay onClick={handleRowClick} _hover={{textDecoration:'underline' }} >{row.databaseName}</LinkOverlay>
                                   </LinkBox>
                                 </Td>
                                 <Td>
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="link"
                                     color={'gray.600'}
                                     onClick={(e) => {
-                                      e.stopPropagation(); // Prevent row click event
+                                      e.stopPropagation();
                                       openModal(index);
                                     }}
                                     _hover={{ bg: 'transparent' }}
@@ -226,35 +435,38 @@ const AnotherPage = () => {
                                   </Button>
                                 </Td>
                                 <Td>
+                                  <Box
+                                    as="span"
+                                    display="inline-block"
+                                    w="10px"
+                                    h="10px"
+                                    borderRadius="50%"
+                                    bg={row.status === 'active' ? 'green.500' : 'red.500'}
+                                    mr={2}
+                                  />
+                                  {row.status === 'active' ? 'Used' : 'Unused'}
+                                </Td>
+                                <Td>
                                   <Text fontSize="sm" color="gray.600">
                                     {row.dateCreated}
                                   </Text>
                                 </Td>
                                 <Td textAlign="right">
-                                  <HStack 
+                                  <HStack
                                     spacing={2}
                                     justify="flex-end"
-                                    opacity={1} // Ensure icons are always visible
+                                    opacity={hoveredRowIndex === index ? 1 : 0}
                                     transition="opacity 0.2s"
                                   >
-                                    <IconButton 
+                                    <IconButton
                                       size="sm"
-                                      icon={<RepeatIcon />} 
+                                      icon={row.status === 'active' ? <DeleteIcon /> : <RepeatIcon />}
                                       onClick={(e) => {
-                                        e.stopPropagation(); // Prevent row click event
-                                        handleRefresh(index);
-                                      }} 
-                                      aria-label="Refresh"
-                                    />
-                                    <IconButton 
-                                      size="sm"
-                                      icon={<DeleteIcon />} 
-                                      onClick={(e) => {
-                                        e.stopPropagation(); // Prevent row click event
+                                        e.stopPropagation();
                                         handleDelete(index);
-                                      }} 
-                                      aria-label="Delete"
-                                      color='red.500'
+                                      }}
+                                      aria-label={row.status === 'active' ? 'Mark as Unused' : 'Mark as Used'}
+                                      color={row.status === 'active' ? 'red.500' : 'green.500'}
                                     />
                                   </HStack>
                                 </Td>
@@ -269,7 +481,7 @@ const AnotherPage = () => {
                   )}
                 </TabPanel>
                 <TabPanel>
-                  <Text>Settings content goes here.</Text>
+                  <EditForm />
                 </TabPanel>
               </TabPanels>
             </Tabs>
@@ -280,7 +492,7 @@ const AnotherPage = () => {
                 <ModalHeader>Update Description</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
-                  <Textarea 
+                  <Textarea
                     value={currentDescription}
                     onChange={(e) => setCurrentDescription(e.target.value)}
                     placeholder="Enter description"
@@ -289,13 +501,18 @@ const AnotherPage = () => {
 
                 <ModalFooter>
                   <HStack spacing={4} w="full" justify="space-between">
-                    <Tooltip label="Generate description using AI" aria-label='A tooltip' hasArrow placement='bottom-start'>
-                      <Button 
+                    <Tooltip
+                      label="Generate description using AI"
+                      aria-label="A tooltip"
+                      hasArrow
+                      placement="bottom-start"
+                    >
+                      <Button
                         onClick={generateAIDescription}
-                        leftIcon={<Image src="/ai-logo.png" boxSize="30px" alt="AI Icon" />} // Replace with your image path
-                        bg="transparent"  // Set the background to transparent
-                        _hover={{ bg: "transparent" }}  // Ensure background remains transparent on hover
-                        _active={{ bg: "transparent" }}  // Ensure background remains transparent when active
+                        leftIcon={<Image src="/ai-logo.png" boxSize="30px" alt="AI Icon" />}
+                        bg="transparent"
+                        _hover={{ bg: 'transparent' }}
+                        _active={{ bg: 'transparent' }}
                       >
                         {/* Optionally, add text or leave it empty */}
                       </Button>
@@ -304,10 +521,10 @@ const AnotherPage = () => {
                       <Button variant="ghost" onClick={closeModal} mr={5}>
                         Cancel
                       </Button>
-                      <Button 
-                        bg="black"        // Set the background color to black
-                        color="white"     // Set the text color to white for contrast
-                        _hover={{ bg: "gray.800" }}  // Optionally, darken the button on hover
+                      <Button
+                        bg="black"
+                        color="white"
+                        _hover={{ bg: 'gray.800' }}
                         onClick={saveDescription}
                       >
                         Save
@@ -317,7 +534,6 @@ const AnotherPage = () => {
                 </ModalFooter>
               </ModalContent>
             </Modal>
-
           </Box>
         </main>
       </div>

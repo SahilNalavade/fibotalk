@@ -17,9 +17,9 @@ import {
   useToast,
   IconButton,
 } from '@chakra-ui/react';
-import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';  // Import from '@chakra-ui/icons'
+import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';
 
-const APIForm = ({ onBack }) => {
+const EditAPI = ({ onBack, onDelete }) => {
   const [isEnabled, setIsEnabled] = useState(false);
   const [formData, setFormData] = useState({
     service: '',
@@ -72,6 +72,10 @@ const APIForm = ({ onBack }) => {
 
   const handleCancel = () => {
     console.log('Form cancelled');
+  };
+
+  const handleDelete = () => {
+    onDelete();
   };
 
   const handleMenuClick = (service) => {
@@ -160,17 +164,22 @@ const APIForm = ({ onBack }) => {
           </FormControl>
         </HStack>
 
-        <HStack spacing={6} justify="flex-end">
-          <Button bg={'transparent'} _hover={{bg:'transparent'}} size="md" onClick={handleCancel}>
-            Cancel
+        <HStack spacing={6} justify="space-between">
+          <Button colorScheme="red" size="md" onClick={handleDelete}>
+            Delete
           </Button>
-          <Button colorScheme="blue" size="md" onClick={handleSave}>
-            Save
-          </Button>
+          <HStack spacing={6}>
+            <Button bg={'transparent'} _hover={{bg:'transparent'}} size="md" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button colorScheme="blue" size="md" onClick={handleSave}>
+              Save
+            </Button>
+          </HStack>
         </HStack>
       </VStack>
     </Box>
   );
 };
 
-export default APIForm;
+export default EditAPI;

@@ -364,7 +364,7 @@ const Reports = () => {
 
   // State to manage the current breadcrumb
   const [breadcrumbItems, setBreadcrumbItems] = useState([
-    { label: 'Reports', href: '/reports' },
+    { label: 'Reports', href: '/' },
   ]);
 
   const pendingReports = sampleReports.filter(report => report.status === 'Pending').slice(0, 3);
@@ -374,8 +374,8 @@ const Reports = () => {
   const handleTabChange = (index) => {
     const tabLabels = ['Pending', 'Verified', 'Training Data'];
     setBreadcrumbItems([
-      { label: 'Reports', href: '/reports' },
-      { label: tabLabels[index], href: '/reports' },
+      { label: 'Reports', href: '/' },
+      { label: tabLabels[index], href: '/' },
     ]);
   };
 

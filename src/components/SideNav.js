@@ -12,12 +12,12 @@ const SideNav = () => {
   };
 
   const navItems = [
-    { label: 'All Reports', icon: FaHome, section: 'Dashboard', path: '/reports' },
+    { label: 'All Reports', icon: FaHome, section: 'Dashboard', path: '/' },
     { label: 'Archive', icon: FaArchive, section: 'Dashboard', path: '/archive' },
     { label: 'Favourites', icon: FaStar, section: 'Dashboard', path: '/favourites' },
     { label: 'New Report', icon: FaPlusSquare, section: 'Agent', path: '/chat-page' },
     { label: 'History', icon: FaHistory, section: 'Agent', path: '/history' },
-    { label: 'Connection', icon: FaDatabase, section: 'Settings', path: '/' },
+    { label: 'Connection', icon: FaDatabase, section: 'Settings', path: '/connections' },
     { label: 'User', icon: FaUser, section: 'Settings', path: '/user' },
     { label: 'Accounts', icon: FaUserCog, section: 'Settings', path: '/accounts' },
     { label: 'Admin', icon: FaShieldAlt, section: 'Settings', path: '/admin' },
