@@ -19,8 +19,10 @@ import {
   InputLeftElement,
   Spinner,
   Image,
+  IconButton,
+  ButtonGroup,
 } from '@chakra-ui/react';
-import { FaPlus, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import ConnectForm from './ConnectForm';
@@ -30,6 +32,9 @@ const TableComponent = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,7 +44,7 @@ const TableComponent = () => {
           `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
           {
             headers: {
-              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`, // Replace with your Airtable API key
+              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
             },
           }
         );
@@ -63,7 +68,7 @@ const TableComponent = () => {
             dateCreated: new Date(record.fields['CreatedAt']).toLocaleString(),
             dateModified: new Date(record.fields['UpdatedAt']).toLocaleString(),
             logoUrl,
-            fields: record.fields, // Include all Airtable fields for editing
+            fields: record.fields,
           };
         });
 
@@ -87,17 +92,25 @@ const TableComponent = () => {
   };
 
   const handleRowClick = (row) => {
-    navigate('/DatabasePage', { state: { databaseInfo: row } }); // Pass the entire row data
+    navigate('/DatabasePage', { state: { databaseInfo: row } });
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
   };
 
   const filteredData = tableData.filter((row) =>
     row.databaseName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <Box boxShadow="lg" borderRadius="lg" p={4}>
       {showForm ? (
-        <ConnectForm onBack={handleBack} /> // Show ConnectForm if showForm is true
+        <ConnectForm onBack={handleBack} />
       ) : (
         <>
           <Flex justifyContent="space-between" mb={4}>
@@ -118,61 +131,90 @@ const TableComponent = () => {
           {loading ? (
             <Spinner size="xl" />
           ) : (
-            <TableContainer>
-              <Table variant="simple" size="md">
-                <Thead bg="gray.100">
-                  <Tr>
-                    <Th fontSize="md">Database Name</Th>
-                    <Th fontSize="md">Status</Th>
-                    <Th fontSize="md">Date Created</Th>
-                    <Th fontSize="md">Date Modified</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {filteredData.map((row, index) => (
-                    <Tr
-                      key={index}
-                      _hover={{ bg: 'gray.50', cursor: 'pointer' }}
-                      transition="all 0.2s"
-                      onClick={() => handleRowClick(row)} // Call handleRowClick on row click
-                    >
-                      <Td fontWeight="medium">
-                        <LinkBox>
-                          <LinkOverlay>
-                            <HStack spacing={3}>
-                              <Image src={row.logoUrl} alt={row.databaseName} boxSize="24px" />
-                              <Text>{row.databaseName}</Text>
-                            </HStack>
-                          </LinkOverlay>
-                        </LinkBox>
-                      </Td>
-                      <Td>
-                        <HStack spacing={2}>
-                          <Box
-                            as="span"
-                            h="10px"
-                            w="10px"
-                            borderRadius="full"
-                            bg={row.statusColor}
-                          />
-                          <Text>{row.status}</Text>
-                        </HStack>
-                      </Td>
-                      <Td>
-                        <Text fontSize="sm" color="gray.600">
-                          {row.dateCreated}
-                        </Text>
-                      </Td>
-                      <Td>
-                        <Text fontSize="sm" color="gray.600">
-                          {row.dateModified}
-                        </Text>
-                      </Td>
+            <>
+              <TableContainer>
+                <Table variant="simple" size="md">
+                  <Thead bg="gray.100">
+                    <Tr>
+                      <Th fontSize="md">Database Name</Th>
+                      <Th fontSize="md">Status</Th>
+                      <Th fontSize="md">Date Created</Th>
+                      <Th fontSize="md">Date Modified</Th>
                     </Tr>
+                  </Thead>
+                  <Tbody>
+                    {paginatedData.map((row, index) => (
+                      <Tr
+                        key={index}
+                        _hover={{ bg: 'gray.50', cursor: 'pointer' }}
+                        transition="all 0.2s"
+                        onClick={() => handleRowClick(row)}
+        
+                      >
+                        <Td fontWeight="medium">
+                          <LinkBox>
+                            <LinkOverlay>
+                              <HStack spacing={3}>
+                                <Image src={row.logoUrl} alt={row.databaseName} boxSize="24px" />
+                                <Text>{row.databaseName}</Text>
+                              </HStack>
+                            </LinkOverlay>
+                          </LinkBox>
+                        </Td>
+                        <Td>
+                          <HStack spacing={2}>
+                            <Box
+                              as="span"
+                              h="10px"
+                              w="10px"
+                              borderRadius="full"
+                              bg={row.statusColor}
+                            />
+                            <Text>{row.status}</Text>
+                          </HStack>
+                        </Td>
+                        <Td>
+                          <Text fontSize="sm" color="gray.600">
+                            {row.dateCreated}
+                          </Text>
+                        </Td>
+                        <Td>
+                          <Text fontSize="sm" color="gray.600">
+                            {row.dateModified}
+                          </Text>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+              <Flex justifyContent="center" alignItems="center" mt={6}>
+                <ButtonGroup variant="outline" spacing={2}>
+                  <IconButton
+                    icon={<FaChevronLeft />}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    isDisabled={currentPage === 1}
+                    aria-label="Previous Page"
+                  />
+                  {[...Array(totalPages).keys()].map((page) => (
+                    <Button
+                      key={page + 1}
+                      onClick={() => handlePageChange(page + 1)}
+                      variant={currentPage === page + 1 ? "solid" : "outline"}
+                      colorScheme={currentPage === page + 1 ? "blue" : "gray"}
+                    >
+                      {page + 1}
+                    </Button>
                   ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
+                  <IconButton
+                    icon={<FaChevronRight />}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    isDisabled={currentPage === totalPages}
+                    aria-label="Next Page"
+                  />
+                </ButtonGroup>
+              </Flex>
+            </>
           )}
         </>
       )}
