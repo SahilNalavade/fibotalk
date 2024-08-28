@@ -38,6 +38,7 @@ import { FaSortAlphaDown, FaSortAlphaUpAlt } from 'react-icons/fa';
 import { FaMagic } from 'react-icons/fa';
 
 import { useAuth } from '../auth'; // Adjust path if necessary
+import { FiRotateCcw } from 'react-icons/fi';
 
 const AnotherPage = () => {
   const { isSignedIn } = useAuth();
@@ -58,6 +59,7 @@ const AnotherPage = () => {
   const [selectedProperties, setSelectedProperties] = useState([]);
   const [selectedDescriptions, setSelectedDescriptions] = useState([]);
   const [selectedPropertyDescriptions, setSelectedPropertyDescriptions] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all'); // Status filter state
 
   const inputRef = useRef();
 
@@ -167,6 +169,13 @@ const AnotherPage = () => {
   const saveAllDescriptions = () => {
     console.log('All descriptions saved!');
     // Implement the logic to save all descriptions to the database or API
+  };
+
+  // Function to refresh all rows
+  const handleRefreshAll = () => {
+    console.log("Refreshing all rows");
+    // Add logic to refresh all rows
+    // Example: You could re-fetch data from an API or re-run any data update logic.
   };
 
   const handleSearchChange = (e) => {
@@ -314,6 +323,15 @@ const AnotherPage = () => {
     }
   };
 
+  const handleRefresh = (index, isProperty = false) => {
+    console.log(`Refreshing ${isProperty ? 'property' : 'table'} at index ${index}`);
+    // Implement the logic to refresh the specific table or property
+  };
+
+  const handleStatusFilterChange = (status) => {
+    setStatusFilter(status);
+  };
+
   // Count used and unused tables
   const usedTablesCount = tableData.filter((row) => row.status === 'active').length;
   const unusedTablesCount = tableData.length - usedTablesCount;
@@ -327,28 +345,47 @@ const AnotherPage = () => {
     : 0;
 
   // Filter logic for the table - include all rows regardless of status
-  const filteredTableData = tableData.filter(
-    (row) =>
-      row.databaseName.toLowerCase().includes(searchText.toLowerCase()) &&
-      row.description.toLowerCase().includes(descriptionSearchText.toLowerCase())
-  );
+  const filteredTableData = tableData.filter((row) => {
+    const matchesStatus = statusFilter === 'all' ||
+      (statusFilter === 'used' && row.status === 'active') ||
+      (statusFilter === 'unused' && row.status === 'unused');
+    const matchesSearchText = row.databaseName.toLowerCase().includes(searchText.toLowerCase()) &&
+      row.description.toLowerCase().includes(descriptionSearchText.toLowerCase());
+    return matchesStatus && matchesSearchText;
+  });
 
   // Filter logic for the properties - include all properties regardless of status
   const filteredProperties = selectedTable !== null
-    ? tableData[selectedTable].properties.filter(
-        (prop) =>
-          prop.name.toLowerCase().includes(propertySearchText.toLowerCase()) &&
-          prop.description.toLowerCase().includes(propertyDescriptionSearchText.toLowerCase())
-      )
+    ? tableData[selectedTable].properties.filter((prop) => {
+      const matchesStatus = statusFilter === 'all' ||
+        (statusFilter === 'used' && prop.status === 'active') ||
+        (statusFilter === 'unused' && prop.status === 'unused');
+      const matchesSearchText = prop.name.toLowerCase().includes(propertySearchText.toLowerCase()) &&
+        prop.description.toLowerCase().includes(propertyDescriptionSearchText.toLowerCase());
+      return matchesStatus && matchesSearchText;
+    })
     : [];
 
   return (
     <main className="flex-grow p-4">
       <Box mx="auto">
-      <Text fontSize="md" color="gray.600" mb={6} align={'left'} fontFamily="Arial, sans-serif">
+        <Text fontSize="md" color="gray.600" mb={6} align={'left'} fontFamily="Arial, sans-serif">
           This is the schema for the database. Adding a detailed description will help the AI provide more accurate responses, and we can assist in generating this description.
         </Text>
         <Flex justifyContent="flex-end" mb={4}>
+        <HStack justify="flex-end" mb={4}>
+                        <Button
+                          mr={4}
+                          onClick={handleRefreshAll}
+                          bg="blue.500"
+            color="white"
+            _hover={{ bg: 'blue.600' }}
+            fontFamily="Arial, sans-serif"
+            leftIcon={<RepeatIcon />}
+                        >
+                          Refresh All
+                        </Button>
+                      </HStack>
           <Tooltip borderRadius='5' label="Create AI Description for All" aria-label="Create AI Description for All">
             <IconButton
               icon={<FaMagic />}
@@ -481,7 +518,25 @@ const AnotherPage = () => {
                       </Menu>
                     </HStack>
                   </Th>
-                  <Th fontSize="md" fontFamily="Arial, sans-serif">Status</Th>
+                  <Th fontSize="md" fontFamily="Arial, sans-serif">
+                    <HStack spacing={4}>
+                      <Menu closeOnSelect={false} autoSelect={false}>
+                        <MenuButton
+                          as={Button}
+                          rightIcon={<ChevronDownIcon />}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          Status
+                        </MenuButton>
+                        <MenuList>
+                          <MenuItem onClick={() => handleStatusFilterChange('all')}>All</MenuItem>
+                          <MenuItem onClick={() => handleStatusFilterChange('used')}>Used</MenuItem>
+                          <MenuItem onClick={() => handleStatusFilterChange('unused')}>Unused</MenuItem>
+                        </MenuList>
+                      </Menu>
+                    </HStack>
+                  </Th>
                   <Th fontSize="md" fontFamily="Arial, sans-serif"></Th>
                 </Tr>
               </Thead>
@@ -536,7 +591,18 @@ const AnotherPage = () => {
                       >
                         <IconButton
                           size="sm"
-                          icon={row.status === 'active' ? <DeleteIcon /> : <RepeatIcon />}
+                          icon={<RepeatIcon />}
+                          aria-label="Refresh"
+                          color="blue.500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRefresh(index); // Call handleRefresh for the main table
+                          }}
+                          fontFamily="Arial, sans-serif"
+                        />
+                        <IconButton
+                          size="sm"
+                          icon={row.status === 'active' ? <DeleteIcon /> : <FiRotateCcw />}
                           aria-label={row.status === 'active' ? "Delete" : "Restore"}
                           color={row.status === 'active' ? "red.500" : "green.500"}
                           onClick={(e) => {
@@ -654,7 +720,25 @@ const AnotherPage = () => {
                       </Menu>
                     </HStack>
                   </Th>
-                  <Th fontSize="md" fontFamily="Arial, sans-serif">Status</Th>
+                  <Th fontSize="md">
+                                <HStack spacing={4}>
+                                  <Menu closeOnSelect={false} autoSelect={false}>
+                                    <MenuButton
+                                      as={Button}
+                                      rightIcon={<ChevronDownIcon />}
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      Status
+                                    </MenuButton>
+                                    <MenuList>
+                                      <MenuItem onClick={() => handleStatusFilterChange('all')}>All</MenuItem>
+                                      <MenuItem onClick={() => handleStatusFilterChange('used')}>Used</MenuItem>
+                                      <MenuItem onClick={() => handleStatusFilterChange('unused')}>Unused</MenuItem>
+                                    </MenuList>
+                                  </Menu>
+                                </HStack>
+                              </Th> 
                   <Th fontSize="md" fontFamily="Arial, sans-serif"></Th>
                 </Tr>
               </Thead>
@@ -707,7 +791,18 @@ const AnotherPage = () => {
                       >
                         <IconButton
                           size="sm"
-                          icon={prop.status === 'active' ? <DeleteIcon /> : <RepeatIcon />}
+                          icon={<RepeatIcon />}
+                          aria-label="Refresh"
+                          color="blue.500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRefresh(index, true); // Call handleRefresh for properties
+                          }}
+                          fontFamily="Arial, sans-serif"
+                        />
+                        <IconButton
+                          size="sm"
+                          icon={prop.status === 'active' ? <DeleteIcon /> : <FiRotateCcw />}
                           aria-label={prop.status === 'active' ? "Delete" : "Restore"}
                           color={prop.status === 'active' ? "red.500" : "green.500"}
                           onClick={(e) => {

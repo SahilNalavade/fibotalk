@@ -241,12 +241,12 @@ const AnotherPage = () => {
                 color={breadcrumbColor}
               >
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/" fontSize="lg">
+                  <BreadcrumbLink href="/connections/database" fontSize="lg">
                     Connection
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/" fontSize="lg">
+                  <BreadcrumbLink href="/connections/database" fontSize="lg">
                     Database Configuration
                   </BreadcrumbLink>
                 </BreadcrumbItem>

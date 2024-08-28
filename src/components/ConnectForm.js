@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   FormControl,
   FormLabel,
@@ -18,19 +18,20 @@ import {
   Image,
   Text,
   IconButton,
-  Flex,
+  Progress,
   Switch,
   Tooltip,
-  Progress,
-  Icon
+  Icon,
+  Spinner,
 } from '@chakra-ui/react';
+import axios from 'axios';
 import { ViewIcon, ViewOffIcon, ChevronDownIcon, ArrowBackIcon, InfoOutlineIcon } from '@chakra-ui/icons';
-import { useNavigate } from 'react-router-dom';
 import { FiUpload } from 'react-icons/fi';
 
-const ConnectForm = () => {
+const ConnectForm = ({ onBack }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [loading, setLoading] = useState(false); // Loading state
   const [formData, setFormData] = useState({
     databaseServer: '',
     username: '',
@@ -41,23 +42,81 @@ const ConnectForm = () => {
     database: '',
     serviceAccountKey: null,
     projectId: '',
+    jsonParsedData: null,
   });
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
 
-  const navigate = useNavigate();
   const toast = useToast();
   const boxBgColor = useColorModeValue('white', 'gray.800');
 
   const databaseServers = [
     { value: 'BigQuery', label: 'BigQuery', logo: '/bigquery.png' },
-    { value: 'RedShift', label: 'RedShift', logo: '/redshift.png' },
     { value: 'SnowFlake', label: 'SnowFlake', logo: '/Snowflake.png' },
   ];
 
-  const handleSave = () => {
-    const { databaseServer, username, password, account, warehouse, role, database, serviceAccountKey, projectId } = formData;
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file);
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+        setFormData({
+          ...formData,
+          serviceAccountKey: file,
+          projectId: json.project_id,
+          jsonParsedData: json,
+        });
+        toast({
+          title: 'File Uploaded',
+          description: 'The service account JSON file has been successfully parsed.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top-right',
+        });
+      } catch (error) {
+        toast({
+          title: 'File Upload Error',
+          description: 'Failed to parse the JSON file. Please ensure it is a valid BigQuery service account key.',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+          position: 'top-right',
+        });
+      }
+    };
+
+    reader.onerror = () => {
+      toast({
+        title: 'File Read Error',
+        description: 'There was an error reading the file. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleSave = useCallback(async () => {
+    const {
+      databaseServer,
+      username,
+      password,
+      account,
+      warehouse,
+      role,
+      database,
+      serviceAccountKey,
+      projectId,
+      jsonParsedData,
+    } = formData;
 
     if (
       !databaseServer ||
@@ -75,49 +134,100 @@ const ConnectForm = () => {
       return;
     }
 
-    console.log('Form submitted:', { ...formData, isEnabled });
+    setLoading(true); // Set loading to true while submitting
 
-    // Reset the form after saving
-    setFormData({
-      databaseServer: '',
-      username: '',
-      password: '',
-      account: '',
-      warehouse: '',
-      role: '',
-      database: '',
-      serviceAccountKey: null,
-      projectId: '',
-    });
-    setSelectedFile(null);
-    setIsEnabled(false); // Reset the switch
+    const airtableData = {
+      fields: {
+        "Organisation ID": new Date().getTime().toString(),
+        "Database Server": databaseServer,
+        ...(databaseServer === 'SnowFlake' && {
+          "Username": username,
+          "Password": password, // Remember to handle this securely
+          "Account": account,
+          "Warehouse": warehouse,
+          "Role": role,
+          "Database": database,
+        }),
+        ...(databaseServer === 'BigQuery' && {
+          "Project ID": projectId,
+          "Client Email": jsonParsedData.client_email,
+          "Client ID": jsonParsedData.client_id,
+          "Private Key ID": jsonParsedData.private_key_id,
+          "Private Key": jsonParsedData.private_key,
+          "Auth URI": jsonParsedData.auth_uri,
+          "Token URI": jsonParsedData.token_uri,
+          "Auth Provider URL": jsonParsedData.auth_provider_x509_cert_url,
+          "Client Cert URL": jsonParsedData.client_x509_cert_url,
+          "Universe Domain": jsonParsedData.universe_domain,
+        }),
+        "State": isEnabled ? "Active" : "Inactive",
+        "CreatedAt": new Date().toISOString(),
+        "UpdatedAt": new Date().toISOString(),
+      },
+    };
 
-    toast({
-      title: 'Form Saved',
-      description: 'Your database connection has been saved.',
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
-      position: 'top-right',
-    });
+    try {
+      const response = await axios.post(
+        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
+        airtableData,
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-    // Redirect to the database configuration tab
-    navigate('/#database-config-tab');
-  };
+      console.log('Airtable response:', response.data);
+
+      toast({
+        title: 'Form Saved',
+        description: 'Your database configuration has been saved to Airtable.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+
+      // Reset the form after saving
+      setFormData({
+        databaseServer: '',
+        username: '',
+        password: '',
+        account: '',
+        warehouse: '',
+        role: '',
+        database: '',
+        serviceAccountKey: null,
+        projectId: '',
+        jsonParsedData: null,
+      });
+      setSelectedFile(null);
+      setIsEnabled(false);
+
+      onBack();
+    } catch (error) {
+      console.error('Error saving to Airtable:', error.response?.data || error.message);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error?.message || 'There was an error saving your data to Airtable. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+    } finally {
+      setLoading(false); // Set loading to false after submission
+    }
+  }, [formData, isEnabled, onBack, toast]);
 
   const handleCancel = () => {
-    // Redirect to the database configuration tab when cancelled
-    navigate('/#database-config-tab');
+    onBack();
   };
 
   const handleMenuSelect = (value) => {
     setFormData({ ...formData, databaseServer: value });
-    setActiveStep(1); // Move to the next step
-  };
-
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
-    setFormData({ ...formData, serviceAccountKey: e.target.files[0] });
+    setActiveStep(1);
   };
 
   const steps = [
@@ -125,6 +235,26 @@ const ConnectForm = () => {
     formData.databaseServer === 'BigQuery' ? 'BigQuery Configuration' : 'SnowFlake Configuration',
     'Review & Save',
   ];
+
+  const menuButtonRef = useRef(null);
+  const [menuWidth, setMenuWidth] = useState(null);
+
+  useEffect(() => {
+    if (menuButtonRef.current) {
+      setMenuWidth(menuButtonRef.current.getBoundingClientRect().width);
+    }
+
+    const updateMenuWidth = () => {
+      if (menuButtonRef.current) {
+        setMenuWidth(menuButtonRef.current.getBoundingClientRect().width);
+      }
+    };
+
+    window.addEventListener('resize', updateMenuWidth);
+    return () => {
+      window.removeEventListener('resize', updateMenuWidth);
+    };
+  }, [formData.databaseServer]);
 
   return (
     <Box width="70%" margin="auto" padding="6" pt={10} borderRadius="lg" boxShadow="xl" bg={boxBgColor} mt={5}>
@@ -135,7 +265,7 @@ const ConnectForm = () => {
             Connect to Database
           </Text>
         </HStack>
-        
+
         <Progress value={(activeStep / (steps.length - 1)) * 100} size="xs" colorScheme="blue" />
 
         {activeStep === 0 && (
@@ -143,6 +273,7 @@ const ConnectForm = () => {
             <FormLabel>Select Database Server</FormLabel>
             <Menu>
               <MenuButton
+                ref={menuButtonRef}
                 as={Button}
                 size="lg"
                 width="100%"
@@ -158,7 +289,7 @@ const ConnectForm = () => {
               >
                 {formData.databaseServer || 'Select database server'}
               </MenuButton>
-              <MenuList bg="white">
+              <MenuList bg="white" width={menuWidth ? `${menuWidth}px` : 'auto'}>
                 {databaseServers.map((server) => (
                   <MenuItem
                     key={server.value}
@@ -261,53 +392,44 @@ const ConnectForm = () => {
         {activeStep === 1 && formData.databaseServer === 'BigQuery' && (
           <VStack spacing={6} align="stretch">
             <FormControl id="service-account-key" isRequired>
-  <FormLabel mb={2}>
-    Service Account Key (JSON)
-    <Tooltip label="Upload your BigQuery service account key in JSON format" fontSize="sm">
-      <InfoOutlineIcon ml={2} boxSize={3} />
-    </Tooltip>
-  </FormLabel>
-  <Box
-    borderWidth={2}
-    borderRadius="md"
-    borderStyle="dashed"
-    borderColor="gray.300"
-    p={4}
-    textAlign="center"
-    transition="all 0.3s"
-    _hover={{ borderColor: "blue.500" }}
-  >
-    <Input
-      type="file"
-      accept=".json"
-      onChange={handleFileChange}
-      display="none"
-      id="service-account-key-upload"
-    />
-    <Button
-      as="label"
-      htmlFor="service-account-key-upload"
-      variant="ghost"
-      colorScheme="blue"
-      size="md"
-      leftIcon={<Icon as={FiUpload} />}
-      mb={2}
-    >
-      {selectedFile ? "Change File" : "Select JSON File"}
-    </Button>
-    <Text fontSize="sm" color="gray.500">
-      {selectedFile ? selectedFile.name : "No file selected"}
-    </Text>
-  </Box>
-</FormControl>
-            <FormControl id="project-id" isRequired>
-              <FormLabel>Project ID</FormLabel>
-              <Input
-                placeholder="Enter project ID"
-                size="lg"
-                value={formData.projectId}
-                onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-              />
+              <FormLabel mb={2}>
+                Service Account Key (JSON)
+                <Tooltip label="Upload your BigQuery service account key in JSON format" fontSize="sm">
+                  <InfoOutlineIcon ml={2} boxSize={3} />
+                </Tooltip>
+              </FormLabel>
+              <Box
+                borderWidth={2}
+                borderRadius="md"
+                borderStyle="dashed"
+                borderColor="gray.300"
+                p={4}
+                textAlign="center"
+                transition="all 0.3s"
+                _hover={{ borderColor: 'blue.500' }}
+              >
+                <Input
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  display="none"
+                  id="service-account-key-upload"
+                />
+                <Button
+                  as="label"
+                  htmlFor="service-account-key-upload"
+                  variant="ghost"
+                  colorScheme="blue"
+                  size="md"
+                  leftIcon={<Icon as={FiUpload} />}
+                  mb={2}
+                >
+                  {selectedFile ? 'Change File' : 'Select JSON File'}
+                </Button>
+                <Text fontSize="sm" color="gray.500">
+                  {selectedFile ? selectedFile.name : 'No file selected'}
+                </Text>
+              </Box>
             </FormControl>
           </VStack>
         )}
@@ -357,12 +479,12 @@ const ConnectForm = () => {
             </Button>
           )}
           {activeStep < 2 ? (
-            <Button colorScheme="blue" size="md" onClick={() => setActiveStep(activeStep + 1)}>
-              Next
+            <Button colorScheme="blue" size="md" onClick={() => setActiveStep(activeStep + 1)} isDisabled={loading}>
+              {loading ? <Spinner size="sm" /> : 'Next'}
             </Button>
           ) : (
-            <Button colorScheme="blue" size="md" onClick={handleSave}>
-              Save
+            <Button colorScheme="blue" size="md" onClick={handleSave} isDisabled={loading}>
+              {loading ? <Spinner size="sm" /> : 'Save'}
             </Button>
           )}
         </HStack>

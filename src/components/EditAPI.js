@@ -17,14 +17,16 @@ import {
   useToast,
   IconButton,
 } from '@chakra-ui/react';
+import axios from 'axios';
 import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';
 
-const EditAPI = ({ onBack, onDelete }) => {
-  const [isEnabled, setIsEnabled] = useState(false);
+const EditAPI = ({ onBack, onDelete, initialData, addNewApiKey }) => {
+  const [isEnabled, setIsEnabled] = useState(initialData?.status === 'Active');
   const [formData, setFormData] = useState({
-    service: '',
-    apiKeyName: '',
-    apiKey: ''
+    id: initialData?.id || '',
+    service: initialData?.service || '',
+    apiKeyName: initialData?.apiKeyName || '',
+    apiKey: initialData?.apiKey || ''
   });
 
   const menuButtonRef = useRef();
@@ -39,7 +41,7 @@ const EditAPI = ({ onBack, onDelete }) => {
   const toast = useToast();
   const boxBgColor = useColorModeValue('white', 'gray.800');
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.service || !formData.apiKeyName || !formData.apiKey) {
       toast({
         title: 'Form Incomplete',
@@ -52,30 +54,127 @@ const EditAPI = ({ onBack, onDelete }) => {
       return;
     }
 
-    // Reset the form after saving
-    setFormData({
-      service: '',
-      apiKeyName: '',
-      apiKey: ''
-    });
-    setIsEnabled(false); // Reset the switch
+    try {
+      const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
+      const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+      const AIRTABLE_TABLE_NAME = 'trial';
 
-    toast({
-      title: 'Form Saved',
-      description: 'Your API configuration has been saved.',
-      status: 'success',
-      duration: 5000,
-      isClosable: true,
-      position: 'top-right'
-    });
+      const updatedApiData = {
+        "Organisation ID": formData.id || new Date().getTime().toString(), // Ensure this matches the field name in Airtable
+        "AI Model": formData.service, // Ensure this matches the field name in Airtable
+        KeyName: formData.apiKeyName, // Ensure this matches the field name in Airtable
+        "API Key": formData.apiKey, // Ensure this matches the field name in Airtable
+        State: isEnabled ? 'Active' : 'Inactive',
+        CreatedAt: initialData?.dateCreated || new Date().toISOString(),
+        UpdatedAt: new Date().toISOString(),
+      };
+
+      const response = await axios.post(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
+        { fields: updatedApiData },
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_PAT}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      addNewApiKey({
+        id: formData.id,
+        name: formData.apiKeyName,
+        status: isEnabled ? 'Active' : 'Inactive',
+        dateCreated: initialData?.dateCreated || new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+        service: formData.service,
+        apiKeyName: formData.apiKeyName,
+        apiKey: formData.apiKey
+      });
+
+      toast({
+        title: 'Form Saved',
+        description: 'Your API configuration has been saved.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right'
+      });
+      onBack();
+    } catch (error) {
+      console.error('Error updating Airtable:', error.response?.data || error.message);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error?.message || 'There was an error saving your data. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right'
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
+      const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+      const AIRTABLE_TABLE_NAME = 'trial';
+
+      const response = await axios.post(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
+        {
+          fields: {
+            "Organisation ID": formData.id,
+            "AI Model": formData.service,
+            KeyName: formData.apiKeyName,
+            "API Key": formData.apiKey,
+            State: 'Deleted',
+            CreatedAt: initialData?.dateCreated || new Date().toISOString(),
+            UpdatedAt: new Date().toISOString(),
+          }
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${AIRTABLE_PAT}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      onDelete({
+        id: formData.id,
+        name: formData.apiKeyName,
+        status: 'Deleted',
+        dateCreated: initialData?.dateCreated || new Date().toISOString(),
+        dateModified: new Date().toISOString(),
+        service: formData.service,
+        apiKeyName: formData.apiKeyName,
+        apiKey: formData.apiKey
+      });
+
+      toast({
+        title: 'API Key Deleted',
+        description: 'The API key has been marked as deleted.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right'
+      });
+      onBack();
+    } catch (error) {
+      console.error('Error updating Airtable:', error.response?.data || error.message);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error?.message || 'There was an error deleting the API key. Please try again.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right'
+      });
+    }
   };
 
   const handleCancel = () => {
-    console.log('Form cancelled');
-  };
-
-  const handleDelete = () => {
-    onDelete();
+    onBack();
   };
 
   const handleMenuClick = (service) => {
@@ -169,7 +268,7 @@ const EditAPI = ({ onBack, onDelete }) => {
             Delete
           </Button>
           <HStack spacing={6}>
-            <Button bg={'transparent'} _hover={{bg:'transparent'}} size="md" onClick={handleCancel}>
+            <Button bg={'transparent'} _hover={{ bg: 'transparent' }} size="md" onClick={handleCancel}>
               Cancel
             </Button>
             <Button colorScheme="blue" size="md" onClick={handleSave}>

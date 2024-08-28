@@ -32,90 +32,101 @@ import {
 } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { FaThList, FaTh, FaSync, FaTrash } from 'react-icons/fa';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
 import TopNav from './TopNav';
 import SideNav from './SideNav';
 import { useAuth } from '../auth';
 import DetailedPage from './DetailedPage';
 
 const sampleReports = [
-  { 
-    name: "Q1 Financial Report", 
-    requestedBy: "John Doe",
-    pendingSince: "2023-03-31", 
-    description: "Financial performance overview for Q1.",
-    status: "Pending",
-    type: "line",
+  {
+    name: 'Q1 Financial Report',
+    requestedBy: 'John Doe',
+    pendingSince: '2023-03-31',
+    description: 'Financial performance overview for Q1.',
+    status: 'Pending',
+    type: 'line',
     data: [
-      {name: 'Jan', value: 4000},
-      {name: 'Feb', value: 3000},
-      {name: 'Mar', value: 5000},
-    ]
+      { name: 'Jan', value: 4000 },
+      { name: 'Feb', value: 3000 },
+      { name: 'Mar', value: 5000 },
+    ],
   },
-  { 
-    name: "Customer Satisfaction Survey", 
-    requestedBy: "Jane Smith",
-    pendingSince: "2023-04-15", 
-    description: "Survey results on customer satisfaction.",
-    status: "Pending",
-    type: "bar",
+  {
+    name: 'Customer Satisfaction Survey',
+    requestedBy: 'Jane Smith',
+    pendingSince: '2023-04-15',
+    description: 'Survey results on customer satisfaction.',
+    status: 'Pending',
+    type: 'bar',
     data: [
-      {name: 'Product A', value: 400},
-      {name: 'Product B', value: 300},
-      {name: 'Product C', value: 500},
-    ]
+      { name: 'Product A', value: 400 },
+      { name: 'Product B', value: 300 },
+      { name: 'Product C', value: 500 },
+    ],
   },
-  { 
-    name: "Product Performance Analysis", 
-    requestedBy: "Mike Johnson",
-    pendingSince: "2023-05-01", 
-    description: "Analysis of product performance.",
-    status: "Pending",
-    type: "pie",
+  {
+    name: 'Product Performance Analysis',
+    requestedBy: 'Mike Johnson',
+    pendingSince: '2023-05-01',
+    description: 'Analysis of product performance.',
+    status: 'Pending',
+    type: 'pie',
     data: [
       { name: 'Group A', value: 400 },
       { name: 'Group B', value: 300 },
       { name: 'Group C', value: 300 },
-    ]
+    ],
   },
-  { 
-    name: "Year-End Financial Report", 
-    requestedBy: "Alice Brown",
-    pendingSince: "2023-12-31", 
-    description: "Year-end financial performance overview.",
-    status: "Completed",
-    type: "line",
+  {
+    name: 'Year-End Financial Report',
+    requestedBy: 'Alice Brown',
+    pendingSince: '2023-12-31',
+    description: 'Year-end financial performance overview.',
+    status: 'Completed',
+    type: 'line',
     data: [
-      {name: 'Oct', value: 7000},
-      {name: 'Nov', value: 8000},
-      {name: 'Dec', value: 9000},
-    ]
+      { name: 'Oct', value: 7000 },
+      { name: 'Nov', value: 8000 },
+      { name: 'Dec', value: 9000 },
+    ],
   },
-  { 
-    name: "Employee Satisfaction Survey", 
-    requestedBy: "David Wilson",
-    pendingSince: "2023-11-30", 
-    description: "Survey results on employee satisfaction.",
-    status: "Completed",
-    type: "bar",
+  {
+    name: 'Employee Satisfaction Survey',
+    requestedBy: 'David Wilson',
+    pendingSince: '2023-11-30',
+    description: 'Survey results on employee satisfaction.',
+    status: 'Completed',
+    type: 'bar',
     data: [
-      {name: 'Department A', value: 450},
-      {name: 'Department B', value: 350},
-      {name: 'Department C', value: 400},
-    ]
+      { name: 'Department A', value: 450 },
+      { name: 'Department B', value: 350 },
+      { name: 'Department C', value: 400 },
+    ],
   },
-  { 
-    name: "Mid-Year Training Data Report", 
-    requestedBy: "Sarah Connor",
-    pendingSince: "2023-06-30", 
-    description: "Analysis of training data.",
-    status: "In Progress",
-    type: "pie",
+  {
+    name: 'Mid-Year Training Data Report',
+    requestedBy: 'Sarah Connor',
+    pendingSince: '2023-06-30',
+    description: 'Analysis of training data.',
+    status: 'In Progress',
+    type: 'pie',
     data: [
       { name: 'Group A', value: 600 },
       { name: 'Group B', value: 300 },
       { name: 'Group C', value: 100 },
-    ]
+    ],
   },
 ];
 
@@ -166,7 +177,9 @@ const ReportChart = ({ report, selectedChartType }) => {
 };
 
 const ReportTiles = ({ reports, onReportClick }) => {
-  const [selectedChartTypes, setSelectedChartTypes] = useState(reports.map(report => report.type));
+  const [selectedChartTypes, setSelectedChartTypes] = useState(
+    reports.map((report) => report.type)
+  );
 
   const handleChartTypeChange = (index, value) => {
     const newSelectedChartTypes = [...selectedChartTypes];
@@ -177,17 +190,17 @@ const ReportTiles = ({ reports, onReportClick }) => {
   return (
     <SimpleGrid columns={[1, 2, 3]} spacing={4}>
       {reports.map((report, index) => (
-        <Box 
-          key={index} 
-          p={4} 
-          borderWidth={1} 
-          borderRadius="md" 
-          shadow="sm" 
+        <Box
+          key={index}
+          p={4}
+          borderWidth={1}
+          borderRadius="md"
+          shadow="sm"
           position="relative"
-          _hover={{ 
+          _hover={{
             '& .tile-actions': {
               opacity: 1,
-            }
+            },
           }}
           onClick={() => onReportClick(report)}
         >
@@ -196,11 +209,11 @@ const ReportTiles = ({ reports, onReportClick }) => {
             <Text fontSize="sm">Date: {report.pendingSince}</Text>
             <Badge
               colorScheme={
-                report.status === "Completed"
-                  ? "green"
-                  : report.status === "In Progress"
-                  ? "yellow"
-                  : "red"
+                report.status === 'Completed'
+                  ? 'green'
+                  : report.status === 'In Progress'
+                  ? 'yellow'
+                  : 'red'
               }
             >
               {report.status}
@@ -224,20 +237,31 @@ const ReportTiles = ({ reports, onReportClick }) => {
               />
             </Box>
           </VStack>
-          <HStack 
-            spacing={2} 
-            position="absolute" 
-            top={2} 
-            right={2} 
-            opacity={0} 
-            className="tile-actions" 
+          <HStack
+            spacing={2}
+            position="absolute"
+            top={2}
+            right={2}
+            opacity={0}
+            className="tile-actions"
             transition="opacity 0.3s ease"
           >
             <Tooltip label="Refresh" aria-label="Refresh">
-              <IconButton icon={<FaSync />} aria-label="Refresh" size="sm" variant="ghost" />
+              <IconButton
+                icon={<FaSync />}
+                aria-label="Refresh"
+                size="sm"
+                variant="ghost"
+              />
             </Tooltip>
-            <Tooltip label="Delete" aria-label="Delete" >
-              <IconButton icon={<FaTrash />} aria-label="Delete" size="sm" variant="ghost" colorScheme='red' />
+            <Tooltip label="Delete" aria-label="Delete">
+              <IconButton
+                icon={<FaTrash />}
+                aria-label="Delete"
+                size="sm"
+                variant="ghost"
+                colorScheme="red"
+              />
             </Tooltip>
           </HStack>
         </Box>
@@ -267,10 +291,23 @@ const ReportTab = ({ title, reports, onBreadcrumbUpdate }) => {
             <Heading size="md">{title}</Heading>
             <Flex>
               <Tooltip label="List view">
-                <IconButton icon={<FaThList />} aria-label="List view" mr={2} onClick={() => setIsListView(true)} color={isListView ? activeColor : inactiveColor} variant="ghost" />
+                <IconButton
+                  icon={<FaThList />}
+                  aria-label="List view"
+                  mr={2}
+                  onClick={() => setIsListView(true)}
+                  color={isListView ? activeColor : inactiveColor}
+                  variant="ghost"
+                />
               </Tooltip>
               <Tooltip label="Grid view">
-                <IconButton icon={<FaTh />} aria-label="Grid view" onClick={() => setIsListView(false)} color={!isListView ? activeColor : inactiveColor} variant="ghost" />
+                <IconButton
+                  icon={<FaTh />}
+                  aria-label="Grid view"
+                  onClick={() => setIsListView(false)}
+                  color={!isListView ? activeColor : inactiveColor}
+                  variant="ghost"
+                />
               </Tooltip>
             </Flex>
           </Flex>
@@ -314,7 +351,9 @@ const ReportList = ({ reports, onReportClick }) => {
             >
               <Td fontWeight="medium">
                 <LinkBox>
-                  <LinkOverlay href="#" onClick={(e) => e.preventDefault()}>{report.name}</LinkOverlay>
+                  <LinkOverlay href="#" onClick={(e) => e.preventDefault()}>
+                    {report.name}
+                  </LinkOverlay>
                 </LinkBox>
               </Td>
               <Td>{report.requestedBy}</Td>
@@ -367,21 +406,21 @@ const Reports = () => {
     { label: 'Reports', href: '/' },
   ]);
 
-  const pendingReports = sampleReports.filter(report => report.status === 'Pending').slice(0, 3);
-  const verifiedReports = sampleReports.filter(report => report.status === 'Completed').slice(0, 2);
-  const trainingDataReports = sampleReports.filter(report => report.status === 'In Progress').slice(0, 1);
+  const pendingReports = sampleReports.filter((report) => report.status === 'Pending').slice(0, 3);
+  const verifiedReports = sampleReports.filter((report) => report.status === 'Completed').slice(0, 2);
+  const trainingDataReports = sampleReports.filter((report) => report.status === 'In Progress').slice(0, 1);
 
   const handleTabChange = (index) => {
     const tabLabels = ['Pending', 'Verified', 'Training Data'];
     setBreadcrumbItems([
-      { label: 'Reports', href: '/' },
-      { label: tabLabels[index], href: '/' },
+      { label: 'Reports', href: '/' }, // Keep "Reports" as the root label
+      { label: tabLabels[index], href: '#' },
     ]);
   };
 
   const handleBreadcrumbUpdate = (reportName) => {
-    setBreadcrumbItems((prevItems) => [
-      ...prevItems,
+    setBreadcrumbItems([
+      { label: 'Reports', href: '/' }, // Keep "Reports" as the root label
       { label: reportName, href: '#' },
     ]);
   };
@@ -406,11 +445,7 @@ const Reports = () => {
                     {index === breadcrumbItems.length - 1 ? (
                       <Text fontWeight="semibold" fontSize="lg">{item.label}</Text>
                     ) : (
-                      item.href ? (
-                        <BreadcrumbLink href={item.href} fontSize="lg">{item.label}</BreadcrumbLink>
-                      ) : (
-                        <Text fontSize="lg">{item.label}</Text>
-                      )
+                      <BreadcrumbLink href={item.href} fontSize="lg">{item.label}</BreadcrumbLink>
                     )}
                   </BreadcrumbItem>
                 ))}

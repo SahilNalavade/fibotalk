@@ -45,23 +45,23 @@ import {
 } from '@chakra-ui/react';
 import { ChevronRightIcon, RepeatIcon, DeleteIcon, ChevronDownIcon, SearchIcon } from '@chakra-ui/icons';
 import { FaSortAlphaDown, FaSortAlphaUpAlt } from 'react-icons/fa';
-import { useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { FiRotateCcw, FiArchive } from 'react-icons/fi';
 
 import TopNav from './TopNav';
 import SideNav from './SideNav';
 import { useAuth } from '../auth';
-import SchemaPage from './SchemaPage';
-import EditForm from './EditForm';
+import SchemaPage from './SchemaPage'; // Assuming you have SchemaPage component
+import EditForm from './EditForm'; // Assuming you have EditForm component
 
-const AnotherPage = () => {
+const DatabasePage = () => {
   const { isSignedIn } = useAuth(); // Check if the user is signed in
   const tabBg = useColorModeValue('gray.100', 'gray.700');
   const navigate = useNavigate(); // Use the useNavigate hook for navigation
-  const location = useLocation();
-  const databaseInfo = location.state?.databaseInfo || {}; // Retrieve the passed data
-  const [formData, setFormData] = useState(databaseInfo.fields || {}); // Initialize form data with passed info
 
+  // State for the currently selected database
+  const [selectedDatabase, setSelectedDatabase] = useState(null);
+  
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentDescription, setCurrentDescription] = useState('');
@@ -94,7 +94,7 @@ const AnotherPage = () => {
       databaseName: 'HyperionDB',
       description: '',
       dateCreated: '12/06/2022',
-      status: 'active', // Status field
+      status: 'inactive', // Status field
     },
   ]);
 
@@ -104,59 +104,12 @@ const AnotherPage = () => {
   const [sortOrder, setSortOrder] = useState(null); // State to track sorting order
   const [descriptionSearchText, setDescriptionSearchText] = useState('');
   const [descriptionSortOrder, setDescriptionSortOrder] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all'); // New state for status filter
 
   const inputRef = useRef(); // Use ref to manage focus manually
 
   // New state to track hovered row index
   const [hoveredRowIndex, setHoveredRowIndex] = useState(null);
-
-  const handleSave = async (updatedData) => {
-    try {
-      const response = await axios.post(
-        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`, // POST to create a new record
-        { fields: updatedData }, // The data to save in the new row
-        {
-          headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`, // Your Airtable API key
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      console.log('Created new record:', response.data);
-      navigate('/'); // Navigate back to the list after saving
-    } catch (error) {
-      if (error.response) {
-        console.error('Error creating new record:', error.response.data);
-      } else {
-        console.error('Error creating new record:', error.message);
-      }
-    }
-  };
-
-  const handleDelete = async () => {
-    try {
-      const updatedData = { ...formData, State: 'Deleted' }; // Set the state to "Deleted"
-
-      const response = await axios.post(
-        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`, // POST to create a new record
-        { fields: updatedData },
-        {
-          headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`, // Your Airtable API key
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-      console.log('Created new "Deleted" record:', response.data);
-      navigate('/'); // Navigate back to the list after saving
-    } catch (error) {
-      if (error.response) {
-        console.error('Error creating "Deleted" record:', error.response.data);
-      } else {
-        console.error('Error creating "Deleted" record:', error.message);
-      }
-    }
-  };
 
   // Function to handle opening the modal
   const openModal = (index) => {
@@ -186,7 +139,7 @@ const AnotherPage = () => {
   // Function to generate AI description (mock implementation)
   const generateAIDescription = () => {
     // Replace with actual AI call
-    const aiDescription = 'This is an AI-generated description.';
+    const aiDescription = "This is an AI-generated description.";
     setCurrentDescription(aiDescription);
   };
 
@@ -196,8 +149,14 @@ const AnotherPage = () => {
     // Add logic to refresh the row data
   };
 
+  // Function to refresh all rows
+  const handleRefreshAll = () => {
+    console.log("Refreshing all rows");
+    // Add logic to refresh all rows
+  };
+
   // Function to handle delete/change status
-  const handleDeleteRow = (index) => {
+  const handleDelete = (index) => {
     console.log(`Changing status of row ${index}`);
     const updatedTableData = tableData.map((row, i) =>
       i === index ? { ...row, status: row.status === 'active' ? 'inactive' : 'active' } : row
@@ -220,11 +179,16 @@ const AnotherPage = () => {
   };
 
   // Function to handle search and filter the table data
-  const filteredTableData = tableData.filter(
-    (row) =>
+  const filteredTableData = tableData.filter((row) => {
+    const matchesSearchText =
       row.databaseName.toLowerCase().includes(searchText.toLowerCase()) &&
-      row.description.toLowerCase().includes(descriptionSearchText.toLowerCase())
-  );
+      row.description.toLowerCase().includes(descriptionSearchText.toLowerCase());
+    const matchesStatusFilter =
+      statusFilter === 'all' ||
+      (statusFilter === 'used' && row.status === 'active') ||
+      (statusFilter === 'unused' && row.status === 'inactive');
+    return matchesSearchText && matchesStatusFilter;
+  });
 
   // Function to handle search input change and update searchText
   const handleSearchChange = (e) => {
@@ -233,6 +197,11 @@ const AnotherPage = () => {
 
   const handleDescriptionSearchChange = (e) => {
     setDescriptionSearchText(e.target.value);
+  };
+
+  // Function to handle status filter change
+  const handleStatusFilterChange = (filter) => {
+    setStatusFilter(filter);
   };
 
   // Function to handle checkbox changes
@@ -273,14 +242,14 @@ const AnotherPage = () => {
       sortedData = [...filteredTableData].sort((a, b) =>
         a.description.toLowerCase() < b.description.toLowerCase() ? -1 : 1
       );
-      setDescriptionSortOrder('asc');
+      setTableData(sortedData);
     }
-    setTableData(sortedData);
   };
 
-  // Function to handle row click and navigate to the /schema-page
-  const handleRowClick = () => {
-    navigate('/DatabasePage'); // Redirect to /DatabasePage
+  // Function to handle row click and display data in settings tab
+  const handleRowClick = (database) => {
+    setSelectedDatabase(database);
+    setCurrentTab('Settings');
   };
 
   return (
@@ -298,18 +267,13 @@ const AnotherPage = () => {
                 color={breadcrumbColor}
               >
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/" fontSize="lg">
+                  <BreadcrumbLink href="/connections" fontSize="lg">
                     Connection
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/" fontSize="lg">
+                  <BreadcrumbLink href="/connections/database" fontSize="lg">
                     Database Configuration
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbItem>
-                  <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">
-                    Schema
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 {showTableBreadcrumb && (
@@ -322,19 +286,37 @@ const AnotherPage = () => {
               </Breadcrumb>
             </Box>
 
-            <Tabs pt={12} onChange={(index) => setCurrentTab(index === 0 ? 'Schema' : 'Settings')}>
+            <Tabs
+              index={currentTab === 'Schema' ? 0 : 1}
+              onChange={(index) =>
+                setCurrentTab(index === 0 ? 'Schema' : 'Settings')
+              }
+            >
               <TabList mb="1em">
                 <Tab>Schema</Tab>
                 <Tab>Settings</Tab>
               </TabList>
               <TabPanels>
+                {/* Schema Tab Panel */}
                 <TabPanel>
-                  {/* Conditional rendering inside the Schema tab */}
                   {!showSchemaPage ? (
                     <>
-                      <Text fontSize="md" color="gray.600" mb={6} align={'left'}>
+                      <Text fontSize="md" color="gray.600" mb={6} align="left">
                         This is the schema for the database. Adding a detailed description will help the AI provide more accurate responses, and we can assist in generating this description.
                       </Text>
+                      <HStack justify="flex-end" mb={4}>
+                        <Button
+                          mr={4}
+                          onClick={handleRefreshAll}
+                          bg="blue.500"
+                          color="white"
+                          _hover={{ bg: 'blue.600' }}
+                          fontFamily="Arial, sans-serif"
+                          leftIcon={<RepeatIcon />}
+                        >
+                          Refresh All
+                        </Button>
+                      </HStack>
                       <TableContainer boxShadow="lg" borderRadius="lg">
                         <Table variant="simple" size="md">
                           <Thead bg="gray.100">
@@ -356,9 +338,14 @@ const AnotherPage = () => {
                                           variant="ghost"
                                           size="sm"
                                           onClick={toggleSortOrder}
-                                          rightIcon={sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
-                                        >
-                                        </Button>
+                                          rightIcon={
+                                            sortOrder === 'asc' ? (
+                                              <FaSortAlphaDown />
+                                            ) : (
+                                              <FaSortAlphaUpAlt />
+                                            )
+                                          }
+                                        ></Button>
                                         <InputGroup>
                                           <InputLeftElement pointerEvents="none">
                                             <SearchIcon color="gray.400" />
@@ -384,8 +371,15 @@ const AnotherPage = () => {
                                       {filteredTableData.map((row, index) => (
                                         <MenuItem key={index}>
                                           <Checkbox
-                                            isChecked={selectedSources.includes(row.databaseName)}
-                                            onChange={(e) => handleCheckboxChange(row.databaseName, e.target.checked)}
+                                            isChecked={selectedSources.includes(
+                                              row.databaseName
+                                            )}
+                                            onChange={(e) =>
+                                              handleCheckboxChange(
+                                                row.databaseName,
+                                                e.target.checked
+                                              )
+                                            }
                                           >
                                             {row.databaseName}
                                           </Checkbox>
@@ -412,9 +406,14 @@ const AnotherPage = () => {
                                           variant="ghost"
                                           size="sm"
                                           onClick={toggleDescriptionSortOrder}
-                                          rightIcon={descriptionSortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
-                                        >
-                                        </Button>
+                                          rightIcon={
+                                            descriptionSortOrder === 'asc' ? (
+                                              <FaSortAlphaDown />
+                                            ) : (
+                                              <FaSortAlphaUpAlt />
+                                            )
+                                          }
+                                        ></Button>
                                         <InputGroup>
                                           <InputLeftElement pointerEvents="none">
                                             <SearchIcon color="gray.400" />
@@ -439,8 +438,15 @@ const AnotherPage = () => {
                                       {filteredTableData.map((row, index) => (
                                         <MenuItem key={index}>
                                           <Checkbox
-                                            isChecked={selectedSources.includes(row.description)}
-                                            onChange={(e) => handleCheckboxChange(row.description, e.target.checked)}
+                                            isChecked={selectedSources.includes(
+                                              row.description
+                                            )}
+                                            onChange={(e) =>
+                                              handleCheckboxChange(
+                                                row.description,
+                                                e.target.checked
+                                              )
+                                            }
                                           >
                                             {row.description || 'No Description'}
                                           </Checkbox>
@@ -450,9 +456,46 @@ const AnotherPage = () => {
                                   </Menu>
                                 </HStack>
                               </Th>
-                              <Th fontSize="md">Status</Th> {/* New status column */}
+                              <Th fontSize="md">
+                                <HStack spacing={4}>
+                                  <Menu closeOnSelect={false} autoSelect={false}>
+                                    <MenuButton
+                                      as={Button}
+                                      rightIcon={<ChevronDownIcon />}
+                                      variant="ghost"
+                                      size="sm"
+                                    >
+                                      Status
+                                    </MenuButton>
+                                    <MenuList>
+                                      <MenuItem
+                                        onClick={() =>
+                                          handleStatusFilterChange('all')
+                                        }
+                                      >
+                                        All
+                                      </MenuItem>
+                                      <MenuItem
+                                        onClick={() =>
+                                          handleStatusFilterChange('used')
+                                        }
+                                      >
+                                        Used
+                                      </MenuItem>
+                                      <MenuItem
+                                        onClick={() =>
+                                          handleStatusFilterChange('unused')
+                                        }
+                                      >
+                                        Unused
+                                      </MenuItem>
+                                    </MenuList>
+                                  </Menu>
+                                </HStack>
+                              </Th>
                               <Th fontSize="md">Date Created</Th>
-                              <Th fontSize="md"></Th> {/* New column for actions */}
+                              <Th fontSize="md"></Th>{' '}
+                              {/* New column for actions */}
                             </Tr>
                           </Thead>
                           <Tbody>
@@ -461,14 +504,31 @@ const AnotherPage = () => {
                                 key={index}
                                 _hover={{ bg: 'gray.50' }}
                                 transition="all 0.2s"
-                                onMouseEnter={() => setHoveredRowIndex(index)}
-                                onMouseLeave={() => setHoveredRowIndex(null)}
-                                bg={row.status === 'inactive' ? 'gray.200' : 'inherit'} // Gray out the row if inactive
-                                opacity={row.status === 'inactive' ? 0.6 : 1} // Reduce opacity if inactive
+                                onMouseEnter={() =>
+                                  setHoveredRowIndex(index)
+                                }
+                                onMouseLeave={() =>
+                                  setHoveredRowIndex(null)
+                                }
+                                bg={
+                                  row.status === 'inactive'
+                                    ? 'gray.200'
+                                    : 'inherit'
+                                } // Gray out the row if inactive
+                                opacity={
+                                  row.status === 'inactive' ? 0.6 : 1
+                                } // Reduce opacity if inactive
                               >
                                 <Td fontWeight="medium">
                                   <LinkBox>
-                                    <LinkOverlay onClick={handleRowClick} _hover={{textDecoration:'underline' }} >{row.databaseName}</LinkOverlay>
+                                    <LinkOverlay
+                                      onClick={() => handleRowClick(row)}
+                                      _hover={{
+                                        textDecoration: 'underline',
+                                      }}
+                                    >
+                                      {row.databaseName}
+                                    </LinkOverlay>
                                   </LinkBox>
                                 </Td>
                                 <Td>
@@ -483,7 +543,8 @@ const AnotherPage = () => {
                                     _hover={{ bg: 'transparent' }}
                                     _focus={{ boxShadow: 'none' }}
                                   >
-                                    {row.description || '+ Add Description'}
+                                    {row.description ||
+                                      '+ Add Description'}
                                   </Button>
                                 </Td>
                                 <Td>
@@ -493,13 +554,22 @@ const AnotherPage = () => {
                                     w="10px"
                                     h="10px"
                                     borderRadius="50%"
-                                    bg={row.status === 'active' ? 'green.500' : 'red.500'}
+                                    bg={
+                                      row.status === 'active'
+                                        ? 'green.500'
+                                        : 'red.500'
+                                    }
                                     mr={2}
                                   />
-                                  {row.status === 'active' ? 'Used' : 'Unused'}
+                                  {row.status === 'active'
+                                    ? 'Used'
+                                    : 'Unused'}
                                 </Td>
                                 <Td>
-                                  <Text fontSize="sm" color="gray.600">
+                                  <Text
+                                    fontSize="sm"
+                                    color="gray.600"
+                                  >
                                     {row.dateCreated}
                                   </Text>
                                 </Td>
@@ -507,19 +577,61 @@ const AnotherPage = () => {
                                   <HStack
                                     spacing={2}
                                     justify="flex-end"
-                                    opacity={hoveredRowIndex === index ? 1 : 0}
+                                    opacity={
+                                      hoveredRowIndex === index
+                                        ? 1
+                                        : 0
+                                    }
                                     transition="opacity 0.2s"
                                   >
-                                    <IconButton
-                                      size="sm"
-                                      icon={row.status === 'active' ? <DeleteIcon /> : <RepeatIcon />}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteRow(index);
-                                      }}
-                                      aria-label={row.status === 'active' ? 'Mark as Unused' : 'Mark as Used'}
-                                      color={row.status === 'active' ? 'red.500' : 'green.500'}
-                                    />
+                                    <Tooltip
+                                      label="Refresh"
+                                      fontSize="md"
+                                    >
+                                      <IconButton
+                                        size="sm"
+                                        icon={<RepeatIcon />} // Updated icon for restoring
+                                        color="green.500"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDelete(index); // Assuming handleDelete toggles the status
+                                        }}
+                                        aria-label="Restore"
+                                      />
+                                    </Tooltip>
+                                    <Tooltip
+                                      label={
+                                        row.status === 'active'
+                                          ? 'Archive'
+                                          : 'Restore'
+                                      }
+                                      fontSize="md"
+                                    >
+                                      <IconButton
+                                        size="sm"
+                                        icon={
+                                          row.status === 'active' ? (
+                                            <DeleteIcon />
+                                          ) : (
+                                            <FiRotateCcw />
+                                          )
+                                        }
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDelete(index);
+                                        }}
+                                        aria-label={
+                                          row.status === 'active'
+                                            ? 'Archive'
+                                            : 'Restore'
+                                        }
+                                        color={
+                                          row.status === 'active'
+                                            ? 'orange.500'
+                                            : 'green.500'
+                                        } // Orange for archive, green for restore
+                                      />
+                                    </Tooltip>
                                   </HStack>
                                 </Td>
                               </Tr>
@@ -532,23 +644,14 @@ const AnotherPage = () => {
                     <SchemaPage />
                   )}
                 </TabPanel>
+                {/* Settings Tab Panel */}
                 <TabPanel>
-                  <EditForm
-                    formData={formData}
-                    setFormData={setFormData}
-                    databaseType={databaseInfo.databaseName} // Pass the database type
-                    
-                  />
-                  <Button colorScheme="blue" mt={4} onClick={() => handleSave(formData)} mr={3}>
-                    Save
-                  </Button>
-                  <Button colorScheme="red" mt={4} onClick={handleDelete}>
-                    Delete
-                  </Button>
+                  <EditForm database={selectedDatabase} onBack={() => setCurrentTab('Schema')} />
                 </TabPanel>
               </TabPanels>
             </Tabs>
 
+            {/* Description Modal */}
             <Modal isOpen={isModalOpen} onClose={closeModal}>
               <ModalOverlay />
               <ModalContent>
@@ -557,13 +660,19 @@ const AnotherPage = () => {
                 <ModalBody>
                   <Textarea
                     value={currentDescription}
-                    onChange={(e) => setCurrentDescription(e.target.value)}
+                    onChange={(e) =>
+                      setCurrentDescription(e.target.value)
+                    }
                     placeholder="Enter description"
                   />
                 </ModalBody>
 
                 <ModalFooter>
-                  <HStack spacing={4} w="full" justify="space-between">
+                  <HStack
+                    spacing={4}
+                    w="full"
+                    justify="space-between"
+                  >
                     <Tooltip
                       label="Generate description using AI"
                       aria-label="A tooltip"
@@ -572,7 +681,13 @@ const AnotherPage = () => {
                     >
                       <Button
                         onClick={generateAIDescription}
-                        leftIcon={<Image src="/ai-logo.png" boxSize="30px" alt="AI Icon" />}
+                        leftIcon={
+                          <Image
+                            src="/ai-logo.png"
+                            boxSize="30px"
+                            alt="AI Icon"
+                          />
+                        }
                         bg="transparent"
                         _hover={{ bg: 'transparent' }}
                         _active={{ bg: 'transparent' }}
@@ -581,7 +696,11 @@ const AnotherPage = () => {
                       </Button>
                     </Tooltip>
                     <div>
-                      <Button variant="ghost" onClick={closeModal} mr={5}>
+                      <Button
+                        variant="ghost"
+                        onClick={closeModal}
+                        mr={5}
+                      >
                         Cancel
                       </Button>
                       <Button
@@ -604,4 +723,4 @@ const AnotherPage = () => {
   );
 };
 
-export default AnotherPage;
+export default DatabasePage;
