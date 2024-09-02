@@ -54,7 +54,7 @@ import SchemaPage from './SchemaPage';
 import EditForm from './EditForm';
 import SchemaLogs from './SchemaLogs';
 
-const AnotherPage = () => {
+const DatabasePagecopy = () => {
   const { isSignedIn } = useAuth(); // Check if the user is signed in
   const tabBg = useColorModeValue('gray.100', 'gray.700');
   const navigate = useNavigate(); // Use the useNavigate hook for navigation
@@ -286,4 +286,4 @@ const AnotherPage = () => {
   );
 };
 
-export default AnotherPage;
+export default DatabasePagecopy;

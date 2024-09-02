@@ -17,6 +17,12 @@ import {
   Text,
   useToast,
   IconButton,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
 } from '@chakra-ui/react';
 import { ArrowBackIcon, ChevronDownIcon } from '@chakra-ui/icons';
 
@@ -25,20 +31,22 @@ const APIForm = ({ onBack, onSave }) => {
   const [formData, setFormData] = useState({
     service: '',
     apiKeyName: '',
-    apiKey: ''
+    apiKey: '',
   });
 
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const cancelRef = useRef();
   const menuButtonRef = useRef();
   const [menuListWidth, setMenuListWidth] = useState('auto');
+
+  const toast = useToast();
+  const boxBgColor = useColorModeValue('white', 'gray.800');
 
   useEffect(() => {
     if (menuButtonRef.current) {
       setMenuListWidth(`${menuButtonRef.current.offsetWidth}px`);
     }
   }, [menuButtonRef.current]);
-
-  const toast = useToast();
-  const boxBgColor = useColorModeValue('white', 'gray.800');
 
   const formatDate = (date) => {
     const year = date.getFullYear();
@@ -47,44 +55,65 @@ const APIForm = ({ onBack, onSave }) => {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     const seconds = String(date.getSeconds()).padStart(2, '0');
-
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
   const handleSave = async () => {
     const uniqueId = new Date().getTime().toString();
     const currentTime = formatDate(new Date());
-    const state = isEnabled ? "Active" : "Inactive";
-
-    if (!formData.service || !formData.apiKeyName || !formData.apiKey) {
-      toast({
-        title: 'Form Incomplete',
-        description: 'Please fill out all required fields.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top-right'
-      });
-      return;
-    }
+    const state = isEnabled ? 'Active' : 'Inactive';
 
     try {
       const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
-        const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
-        const AIRTABLE_TABLE_NAME = 'trial';
+      const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+      const AIRTABLE_TABLE_NAME = 'trial';
 
-      const response = await axios.post(
+      // If the new API key is set to Active, update other API keys to Inactive
+      if (isEnabled) {
+        const existingKeysResponse = await axios.get(
+          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}?filterByFormula=NOT({State}='Deleted')`,
+          {
+            headers: {
+              Authorization: `Bearer ${AIRTABLE_PAT}`,
+            },
+          }
+        );
+
+        // Set all existing active keys to inactive
+        const updatePromises = existingKeysResponse.data.records.map((record) =>
+          axios.patch(
+            `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${record.id}`,
+            {
+              fields: {
+                State: 'Inactive',
+                UpdatedAt: formatDate(new Date()),
+              },
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${AIRTABLE_PAT}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          )
+        );
+
+        await Promise.all(updatePromises);
+      }
+
+      // Save the new API key
+      await axios.post(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
         {
           fields: {
-            "Organisation ID": uniqueId,
-            "AI Model": formData.service,
+            'Organisation ID': uniqueId,
+            'AI Model': formData.service,
             KeyName: formData.apiKeyName,
-            "API Key": formData.apiKey,
+            'API Key': formData.apiKey,
             State: state,
             CreatedAt: currentTime,
-            UpdatedAt: currentTime
-          }
+            UpdatedAt: currentTime,
+          },
         },
         {
           headers: {
@@ -105,15 +134,12 @@ const APIForm = ({ onBack, onSave }) => {
         apiKey: formData.apiKey,
       };
 
-      // Call the onSave callback with the new API key data
-      if (onSave) {
-        onSave(newApiKey);
-      }
+      onSave?.(newApiKey);
 
       setFormData({
         service: '',
         apiKeyName: '',
-        apiKey: ''
+        apiKey: '',
       });
       setIsEnabled(false);
 
@@ -123,7 +149,7 @@ const APIForm = ({ onBack, onSave }) => {
         status: 'success',
         duration: 5000,
         isClosable: true,
-        position: 'top-right'
+        position: 'top-right',
       });
     } catch (error) {
       console.error('Error saving to Airtable:', error.response ? error.response.data : error.message);
@@ -133,9 +159,26 @@ const APIForm = ({ onBack, onSave }) => {
         status: 'error',
         duration: 5000,
         isClosable: true,
-        position: 'top-right'
+        position: 'top-right',
       });
+    } finally {
+      setIsConfirmOpen(false);
     }
+  };
+
+  const handleConfirmSave = () => {
+    if (!formData.service || !formData.apiKeyName || !formData.apiKey) {
+      toast({
+        title: 'Form Incomplete',
+        description: 'Please fill out all required fields.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+      return;
+    }
+    setIsConfirmOpen(true);
   };
 
   const handleCancel = () => {
@@ -149,7 +192,16 @@ const APIForm = ({ onBack, onSave }) => {
   const services = ['ChatGPT4'];
 
   return (
-    <Box width="70%" margin="auto" padding="6" pt={10} borderRadius="lg" boxShadow="xl" bg={boxBgColor} mt={10}>
+    <Box
+      width="70%"
+      margin="auto"
+      padding="6"
+      pt={10}
+      borderRadius="lg"
+      boxShadow="xl"
+      bg={boxBgColor}
+      mt={10}
+    >
       <VStack spacing={8} align="stretch">
         <HStack justify="flex-start" spacing={4}>
           <IconButton
@@ -158,7 +210,9 @@ const APIForm = ({ onBack, onSave }) => {
             onClick={onBack}
             variant="ghost"
           />
-          <Text fontSize="lg" fontWeight="bold">API Configuration</Text>
+          <Text fontSize="lg" fontWeight="bold">
+            API Configuration
+          </Text>
         </HStack>
 
         <FormControl id="service" isRequired>
@@ -201,7 +255,9 @@ const APIForm = ({ onBack, onSave }) => {
             placeholder="Enter API key name"
             size="lg"
             value={formData.apiKeyName}
-            onChange={(e) => setFormData({ ...formData, apiKeyName: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, apiKeyName: e.target.value })
+            }
           />
         </FormControl>
 
@@ -229,14 +285,68 @@ const APIForm = ({ onBack, onSave }) => {
         </HStack>
 
         <HStack spacing={6} justify="flex-end">
-          <Button bg={'transparent'} _hover={{ bg: 'transparent' }} size="md" onClick={handleCancel}>
+          <Button
+            bg={'transparent'}
+            _hover={{ bg: 'transparent' }}
+            size="md"
+            onClick={handleCancel}
+          >
             Cancel
           </Button>
-          <Button colorScheme="blue" size="md" onClick={handleSave}>
+          <Button
+            colorScheme="blue"
+            size="md"
+            onClick={handleConfirmSave}
+          >
             Save
           </Button>
         </HStack>
       </VStack>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isConfirmOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={() => setIsConfirmOpen(false)}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Confirm Save
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Creating a new API key will make the current one inactive. Do you
+              want to proceed?
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button
+                ref={cancelRef}
+                onClick={() => setIsConfirmOpen(false)}
+                bg="white"
+                border="1px solid"
+                borderColor="#32343A"
+                color="#32343A"
+                _hover={{ bg: '#f7f7f7' }}
+                _active={{ bg: '#e2e2e2' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                ml={3}
+                bg="#32343A"
+                color="white"
+                _hover={{ bg: '#2b2d33' }}
+                _active={{ bg: '#232529' }}
+              >
+                Yes, Save
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 };

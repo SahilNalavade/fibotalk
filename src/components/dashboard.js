@@ -1,3 +1,4 @@
+// Dashboard.js
 import React, { useState } from 'react';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import TopNav from './TopNav';
@@ -25,6 +26,7 @@ const Dashboard = () => {
   const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
+  const [apiKeys, setApiKeys] = useState([]); // State to hold API keys
 
   const handleAddDatabase = () => {
     setShowConnectForm(true);
@@ -34,6 +36,14 @@ const Dashboard = () => {
   const handleBackToDatabaseConfig = () => {
     setShowConnectForm(false);
     setActiveTabIndex(0); // Switch to the API Key tab
+  };
+
+  const handleSaveAPIKey = (apiKeyData) => {
+    setApiKeys([...apiKeys, apiKeyData]); // Update state with new API key
+  };
+
+  const handleSaveSuccess = () => {
+    setShowConnectForm(false); // Hide the form and show the table component
   };
 
   const getCurrentBreadcrumb = () => {
@@ -81,11 +91,11 @@ const Dashboard = () => {
                 </TabList>
                 <TabPanels>
                   <TabPanel>
-                    <APIList />
+                    <APIList apiKeys={apiKeys} onSave={handleSaveAPIKey} />
                   </TabPanel>
                   <TabPanel>
                     {showConnectForm ? (
-                      <ConnectForm onBack={handleBackToDatabaseConfig} />
+                      <ConnectForm onBack={handleBackToDatabaseConfig} onSaveSuccess={handleSaveSuccess} />
                     ) : (
                       <TableComponent />
                     )}

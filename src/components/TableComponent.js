@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// TableComponent.jsx
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Table,
   Thead,
@@ -37,51 +38,54 @@ const TableComponent = () => {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await axios.get(
-          `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
-          {
-            headers: {
-              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
-            },
-          }
-        );
+  // Function to fetch data from Airtable
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`, // Replace with your actual Airtable API key
+          },
+        }
+      );
 
-        const records = response.data.records.map((record) => {
-          let logoUrl = '';
-          if (record.fields['Database Server'] === 'BigQuery') {
-            logoUrl = '/bigquery.png';
-          } else if (record.fields['Database Server'] === 'SnowFlake') {
-            logoUrl = '/Snowflake.png';
-          } else {
-            logoUrl = '/default_database.png';
-          }
+      const records = response.data.records.map((record) => {
+        let logoUrl = '';
+        if (record.fields['Database Server'] === 'BigQuery') {
+          logoUrl = '/bigquery.png';
+        } else if (record.fields['Database Server'] === 'SnowFlake') {
+          logoUrl = '/Snowflake.png';
+        } else {
+          logoUrl = '/default_database.png';
+        }
 
-          return {
-            id: record.id,
-            databaseName: record.fields['Database Server'] || 'Unnamed Database',
-            description: record.fields['Description'] || '',
-            status: record.fields['State'] || 'Unknown',
-            statusColor: record.fields['State'] === 'Active' ? 'green.400' : 'yellow.400',
-            dateCreated: new Date(record.fields['CreatedAt']).toLocaleString(),
-            dateModified: new Date(record.fields['UpdatedAt']).toLocaleString(),
-            logoUrl,
-            fields: record.fields,
-          };
-        });
+        return {
+          id: record.id,
+          databaseName: record.fields['Database'] || 'Unnamed Database',
+          description: record.fields['Description'] || '',
+          status: record.fields['State'] || 'Unknown',
+          statusColor: record.fields['State'] === 'Active' ? 'green.400' : 'yellow.400',
+          dateCreated: new Date(record.fields['CreatedAt']),
+          dateModified: new Date(record.fields['UpdatedAt']),
+          logoUrl,
+          fields: record.fields,
+        };
+      });
 
-        setTableData(records);
-      } catch (error) {
-        console.error('Error fetching data from Airtable:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+      const sortedRecords = records.sort((a, b) => b.dateModified - a.dateModified);
+      setTableData(sortedRecords);
+    } catch (error) {
+      console.error('Error fetching data from Airtable:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleAddDatabaseClick = () => {
     setShowForm(true);
@@ -90,6 +94,16 @@ const TableComponent = () => {
   const handleBack = () => {
     setShowForm(false);
   };
+
+  // Update this function to call fetchData after saving
+  const handleSaveDatabase = useCallback(
+    (newDatabase) => {
+      fetchData(); // Refresh the data after saving
+      setShowForm(false);
+      setCurrentPage(1);
+    },
+    [fetchData]
+  );
 
   const handleRowClick = (row) => {
     navigate('/DatabasePage', { state: { databaseInfo: row } });
@@ -110,10 +124,10 @@ const TableComponent = () => {
   return (
     <Box boxShadow="lg" borderRadius="lg" p={4}>
       {showForm ? (
-        <ConnectForm onBack={handleBack} />
+        <ConnectForm onBack={handleBack} onSaveDatabase={handleSaveDatabase} />
       ) : (
         <>
-          <Flex justifyContent="space-between" mb={4}>
+          <Flex justifyContent="right" mb={4}>
             <InputGroup width="400px" mr={3}>
               <InputLeftElement pointerEvents="none" color="gray.400">
                 <FaSearch />
@@ -149,7 +163,6 @@ const TableComponent = () => {
                         _hover={{ bg: 'gray.50', cursor: 'pointer' }}
                         transition="all 0.2s"
                         onClick={() => handleRowClick(row)}
-        
                       >
                         <Td fontWeight="medium">
                           <LinkBox>
@@ -175,12 +188,12 @@ const TableComponent = () => {
                         </Td>
                         <Td>
                           <Text fontSize="sm" color="gray.600">
-                            {row.dateCreated}
+                            {row.dateCreated.toLocaleString()}
                           </Text>
                         </Td>
                         <Td>
                           <Text fontSize="sm" color="gray.600">
-                            {row.dateModified}
+                            {row.dateModified.toLocaleString()}
                           </Text>
                         </Td>
                       </Tr>
@@ -200,8 +213,8 @@ const TableComponent = () => {
                     <Button
                       key={page + 1}
                       onClick={() => handlePageChange(page + 1)}
-                      variant={currentPage === page + 1 ? "solid" : "outline"}
-                      colorScheme={currentPage === page + 1 ? "blue" : "gray"}
+                      variant={currentPage === page + 1 ? 'solid' : 'outline'}
+                      colorScheme={currentPage === page + 1 ? 'blue' : 'gray'}
                     >
                       {page + 1}
                     </Button>

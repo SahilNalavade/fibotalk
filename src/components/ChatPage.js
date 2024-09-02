@@ -9,6 +9,9 @@ import {
   HStack,
   useColorModeValue,
   Container,
+  Heading,
+  UnorderedList,
+  ListItem,
   IconButton,
   Tabs,
   TabList,
@@ -44,7 +47,10 @@ import {
   Center,
   InputGroup,
   InputRightElement,
-  Menu,MenuButton,MenuList,MenuItem
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react';
 import {
   CheckIcon,
@@ -53,38 +59,38 @@ import {
   RepeatIcon,
   AddIcon,
   MinusIcon,
-  ChevronDownIcon
+  ChevronDownIcon,
 } from '@chakra-ui/icons';
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  FaPencilAlt,
+  FaThumbsDown,
+  FaThumbsUp,
+  FaExpand,
+  FaChartBar,
+  FaChartLine,
+  FaChartPie,
+} from 'react-icons/fa';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from 'recharts';
 import TopNav from './TopNav';
 import SideNav from './SideNav';
 import { useAuth } from '../auth';
 import { UserButton } from '@clerk/clerk-react';
-import { FaPencilAlt, FaThumbsDown, FaThumbsUp,FaExpand,FaChartBar, FaChartLine, FaChartPie } from 'react-icons/fa';
 
-const ExamplePrompt = ({ text, onClick }) => {
-  const bgColor = useColorModeValue('gray.100', 'gray.700');
-  const hoverBgColor = useColorModeValue('gray.200', 'gray.600');
-
-  return (
-    <Box
-      p={4}
-      borderWidth={1}
-      borderRadius="md"
-      cursor="pointer"
-      bg={bgColor}
-      _hover={{ bg: hoverBgColor }}
-      w="full"
-      textAlign="center"
-      onClick={onClick}
-    >
-      <Text>{text}</Text>
-    </Box>
-  );
-};
-
+// Component to display chat messages
 const ChatMessage = ({ message, isUser, onEdit }) => {
   const bgColor = useColorModeValue(isUser ? 'transparent' : 'white', isUser ? 'blue.700' : 'gray.700');
   const borderColor = useColorModeValue(isUser ? 'transparent' : '#E2E8F0', isUser ? 'blue.700' : 'gray.700');
@@ -99,6 +105,64 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
   const handleSaveClick = () => {
     onEdit(editedMessage);
     setIsEditing(false);
+  };
+
+  // Function to render formatted message content
+  const formattedMessage = () => {
+    const lines = message.split('\n'); // Split message into lines
+    const elements = lines.map((line, index) => {
+      // Check if the line matches the pattern for numbered headings (e.g., "1. **Select Columns**:")
+      if (/^\d+\.\s\*\*.+\*\*:/.test(line)) {
+        return (
+          <Heading as="h5" size="sm" mb={1} color="blue.600" key={index}>
+            {line.replace(/^\d+\.\s\*\*/, '').replace(/\*\*:$/, '').trim()}
+          </Heading>
+        );
+      }
+      // Check if the line starts with ### for headers
+      if (line.startsWith('###')) {
+        return (
+          <Heading as="h4" size="md" mb={2} color="gray.600" key={index}>
+            {line.replace(/^###\s*/, '').trim()}
+          </Heading>
+        );
+      }
+      // Check if the line starts with # for subheaders
+      if (line.startsWith('#')) {
+        return (
+          <Heading as="h5" size="sm" mb={1} color="blue.500" key={index}>
+            {line.replace(/^#\s*/, '').trim()}
+          </Heading>
+        );
+      }
+      // Check if the line starts with * for list items
+      if (line.startsWith('*')) {
+        return (
+          <UnorderedList key={index} pl={5} mb={2}>
+            <ListItem color="gray.800">
+              {line.replace(/^\*\s*/, '').trim()}
+            </ListItem>
+          </UnorderedList>
+        );
+      }
+      // Check if the line starts with - for bullet points
+      if (line.startsWith('-')) {
+        return (
+          <UnorderedList key={index} pl={5} mb={2}>
+            <ListItem color="gray.800">
+              {line.replace(/^-/, '').trim()}
+            </ListItem>
+          </UnorderedList>
+        );
+      }
+      // Default rendering for other lines
+      return (
+        <Text key={index} color="gray.700">
+          {line.trim()}
+        </Text>
+      );
+    });
+    return elements;
   };
 
   return (
@@ -131,7 +195,7 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
             w="full"
             textAlign="left"
           >
-            <HStack alignItems="flex-start">
+            <VStack align="start" spacing={4}>
               {isEditing ? (
                 <Input
                   value={editedMessage}
@@ -140,9 +204,9 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
                   w="full"
                 />
               ) : (
-                <Text whiteSpace="pre-wrap">{message}</Text>
+                formattedMessage()
               )}
-            </HStack>
+            </VStack>
           </Box>
         </Box>
       )}
@@ -190,6 +254,7 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
   );
 };
 
+// ResultBox component
 const ResultBox = ({ sql, data, chart }) => {
   const { hasCopied, onCopy } = useClipboard(sql);
   const [chartType, setChartType] = useState('bar');
@@ -341,7 +406,6 @@ const ResultBox = ({ sql, data, chart }) => {
           <TabPanel>
             <Box>
               <Flex justifyContent="end" alignItems="center" mb={4}>
-                
                 <HStack spacing={2}>
                   <IconButton icon={<RepeatIcon />} onClick={() => setChartSize(1)} />
                   <IconButton icon={<DownloadIcon />} onClick={() => alert('Download chart functionality to be implemented')} />
@@ -349,28 +413,27 @@ const ResultBox = ({ sql, data, chart }) => {
                   <IconButton icon={<MinusIcon />} onClick={() => setChartSize((prev) => (prev > 0.4 ? prev - 0.2 : prev))} />
                   <IconButton icon={<FaExpand />} onClick={openModal} />
                   <Menu>
-  <MenuButton as={Button}>
-    <HStack>
-      {chartType === 'bar' && <FaChartBar />}
-      {chartType === 'line' && <FaChartLine />}
-      {chartType === 'pie' && <FaChartPie />}
-      <Text>{chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart</Text>
-      <ChevronDownIcon /> {/* Adding the down chevron icon */}
-    </HStack>
-  </MenuButton>
-  <MenuList>
-    <MenuItem icon={<FaChartBar />} onClick={() => setChartType('bar')}>
-      Bar Chart
-    </MenuItem>
-    <MenuItem icon={<FaChartLine />} onClick={() => setChartType('line')}>
-      Line Chart
-    </MenuItem>
-    <MenuItem icon={<FaChartPie />} onClick={() => setChartType('pie')}>
-      Pie Chart
-    </MenuItem>
-  </MenuList>
-</Menu>
-             
+                    <MenuButton as={Button}>
+                      <HStack>
+                        {chartType === 'bar' && <FaChartBar />}
+                        {chartType === 'line' && <FaChartLine />}
+                        {chartType === 'pie' && <FaChartPie />}
+                        <Text>{chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart</Text>
+                        <ChevronDownIcon />
+                      </HStack>
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem icon={<FaChartBar />} onClick={() => setChartType('bar')}>
+                        Bar Chart
+                      </MenuItem>
+                      <MenuItem icon={<FaChartLine />} onClick={() => setChartType('line')}>
+                        Line Chart
+                      </MenuItem>
+                      <MenuItem icon={<FaChartPie />} onClick={() => setChartType('pie')}>
+                        Pie Chart
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
                 </HStack>
               </Flex>
               <Box transform={`scale(${chartSize})`} transformOrigin="top left" w="full">
@@ -472,6 +535,7 @@ const ResultBox = ({ sql, data, chart }) => {
   );
 };
 
+// Main ChatPage component
 const ChatPage = () => {
   const { isSignedIn } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -480,21 +544,23 @@ const ChatPage = () => {
   const [currentSteps, setCurrentSteps] = useState([]);
   const [result, setResult] = useState(null);
   const [showExamples, setShowExamples] = useState(true);
+  const [conversationCount, setConversationCount] = useState(0);
+  const [isInputDisabled, setIsInputDisabled] = useState(false); // State to disable input on confirmation
 
   const examplePrompts = [
     {
-      title: 'Examples',
-      prompt: 'What are the refund trends for the last 5 months?',
+      title: '',
+      prompt: 'What is the total users and CLV - only high ticket ( using deals table)',
       imageSrc: '/vector1.png',
     },
     {
-      title: 'Capabilities',
-      prompt: 'What are the net profit trends for the last 3 years?',
+      title: '',
+      prompt: 'What is the daily trends of Deals and Amount per funnel',
       imageSrc: '/vector1.png',
     },
     {
-      title: 'Limitations',
-      prompt: 'What are the monthly revenue trends?',
+      title: '',
+      prompt: 'What is the total Current Cycle Deals for May 2024',
       imageSrc: '/vector1.png',
     },
   ];
@@ -506,29 +572,76 @@ const ChatPage = () => {
     setInputValue('');
     setShowExamples(false);
 
-    setTimeout(() => {
-      const steps = [
-        'Research recipes for chocolate cake',
-        'Gather ingredients',
-        'Preheat the oven',
-        'Mix dry ingredients',
-        'Mix wet ingredients',
-        'Combine wet and dry ingredients',
-        'Pour batter into cake pan',
-        'Bake the cake',
-        'Let it cool and frost',
-      ];
-      setCurrentSteps(steps);
-      setMessages((prev) => [
-        ...prev,
-        {
-          text: `Here are the steps I'll take:\n\nTo calculate sales trend, below is the pseudocode:\n1. Sales is to be calculated from the revenue column from the order table.\n2. Date filter to be applied using the order date column from the order table.\n3. Sales numbers to be grouped monthly.`,
-          isUser: false,
-        },
-      ]);
+    const newConversationId = conversationCount + 1;
 
-      setIsWaitingForConfirmation(true);
-    }, 1000);
+    // Create a new message object with a unique identifier only for user messages
+    const newMessage = {
+      id: newConversationId,
+      text: inputValue,
+      isUser: true,
+    };
+
+    // Add the new user message to the messages array
+    const updatedMessages = [...messages, newMessage];
+    setMessages(updatedMessages);
+    setInputValue('');
+    setShowExamples(false);
+
+    // Filter out system messages and format the conversation history
+    const formattedConversation = updatedMessages
+      .filter((message) => message.isUser) // Include only user messages
+      .map((message) => `Conversation ${message.id}: ${message.text}`)
+      .join('\n');
+
+    // Log the formatted conversation history
+    console.log('Formatted Conversation: \n', formattedConversation);
+
+    // Send the formatted conversation history to your Flask API
+    sendToAgent(formattedConversation);
+    // Update the conversation counter
+    setConversationCount(newConversationId);
+  };
+
+  const sendToAgent = (formattedConversation) => {
+    const apiUrl = 'http://localhost:8080/api/generate-pseudocode';
+
+    // Display the loading message before starting the API call
+    setMessages((prev) => [
+      ...prev,
+      {
+        text: 'Generating Pseudocode....',
+        isUser: false,
+      },
+    ]);
+
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ conversation: formattedConversation }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        const pseudocodeSteps = data.pseudocode.split('\n'); // Assuming each step is on a new line
+        setCurrentSteps(pseudocodeSteps);
+
+        // Replace the loading message with the actual pseudocode
+        setMessages((prevMessages) => [
+          ...prevMessages.slice(0, -1), // Remove the loading message
+          { text: data.pseudocode, isUser: false }, // Add system response to the chat
+        ]);
+
+        // Show the confirmation prompt only after pseudocode is displayed
+        setIsWaitingForConfirmation(true);
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        setMessages((prevMessages) => [
+          ...prevMessages.slice(0, -1), // Remove the loading message in case of error
+          { text: `Error: ${error.message}`, isUser: false },
+        ]);
+      });
   };
 
   const handleEditMessage = (index, newMessage) => {
@@ -541,29 +654,14 @@ const ChatPage = () => {
     setIsWaitingForConfirmation(false);
 
     if (confirmed) {
-      const simulatedResult = {
-        sql: `SELECT c.id, c.title
-FROM chats c
-INNER JOIN (
-  SELECT chat_id, COUNT(*) AS message_count
-  FROM messages
-  GROUP BY chat_id
-) m ON c.id = m.chat_id
-WHERE m.message_count >= 4;`,
-        data: [
-          { name: 'Chocolate Cake', deliciousness: 9001 },
-          { name: 'Vanilla Cake', deliciousness: 8500 },
-          { name: 'Strawberry Cake', deliciousness: 8000 },
-        ],
-        chart: {
-          colors: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'], // For pie chart slices
-        },
-      };
-      setResult(simulatedResult);
-      setMessages((prev) => [
-        ...prev,
-        { text: "Great! Here's the result:", isUser: false },
-      ]);
+      const formattedPseudocode = currentSteps.join('\n');
+      console.log('Formatted Pseudocode: \n', formattedPseudocode);
+
+      // Send the pseudocode to the Flask API to generate SQL
+      sendPseudocodeToAgent(formattedPseudocode);
+
+      // Disable the input box when confirmed
+      setIsInputDisabled(true);
     } else {
       setMessages((prev) => [
         ...prev,
@@ -571,6 +669,54 @@ WHERE m.message_count >= 4;`,
       ]);
     }
     setCurrentSteps([]);
+  };
+
+  const sendPseudocodeToAgent = (pseudocode) => {
+    const apiUrl = 'http://localhost:8080/api/generate-sql';
+
+    fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ pseudocode: pseudocode }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log('Received SQL from agent: ', data.sql);
+        console.log('Received Data from agent: ', data.data);
+
+        if (!data.data || data.data.length === 0) {
+          throw new Error('No data returned from API');
+        }
+
+        const result = {
+          sql: data.sql,
+          data: data.data,
+          chart: {
+            colors: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'],
+          },
+        };
+
+        setResult(result);
+
+        setMessages((prev) => [
+          ...prev,
+          { text: "Great! Here's the result:", isUser: false },
+        ]);
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+        setMessages((prev) => [
+          ...prev,
+          { text: `Error: ${error.message}`, isUser: false },
+        ]);
+      });
   };
 
   return (
@@ -643,25 +789,33 @@ WHERE m.message_count >= 4;`,
                 {result && <ResultBox sql={result.sql} data={result.data} chart={result.chart} />}
               </VStack>
 
-              <HStack as="form" w="80%" mb={2} onSubmit={(e) => e.preventDefault()} mx="auto">
-                <InputGroup size="lg">
-                  <Input
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    placeholder="Enter your message..."
-                  />
-                  <InputRightElement width="4.5rem">
-                    <IconButton
-                      bg={'transparent'}
-                      aria-label="Send"
-                      icon={<Image src="/send.png" boxSize="20px" alt="Send" />}
-                      onClick={handleSend}
-                      isDisabled={inputValue.trim() === '' || isWaitingForConfirmation}
-                      size="sm"
+              {!isInputDisabled && (
+                <HStack as="form" w="80%" mb={2} onSubmit={(e) => e.preventDefault()} mx="auto">
+                  <InputGroup size="lg">
+                    <Input
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      placeholder="Enter your message..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !isWaitingForConfirmation && inputValue.trim() !== '') {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
                     />
-                  </InputRightElement>
-                </InputGroup>
-              </HStack>
+                    <InputRightElement width="4.5rem">
+                      <IconButton
+                        bg={'transparent'}
+                        aria-label="Send"
+                        icon={<Image src="/send.png" boxSize="20px" alt="Send" />}
+                        onClick={handleSend}
+                        isDisabled={inputValue.trim() === '' || isWaitingForConfirmation}
+                        size="sm"
+                      />
+                    </InputRightElement>
+                  </InputGroup>
+                </HStack>
+              )}
             </VStack>
           </Container>
         </main>

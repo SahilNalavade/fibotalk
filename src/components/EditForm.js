@@ -1,17 +1,23 @@
+// EditForm.jsx
 import React from 'react';
 import {
   FormControl,
   FormLabel,
   Input,
   VStack,
-  HStack,
   Box,
   useColorModeValue,
+  Switch,
+  Grid,
+  GridItem,
+  Divider,
+  Heading,
 } from '@chakra-ui/react';
 
-const EditForm = ({ formData, setFormData, databaseType }) => {
+const EditForm = ({ formData, setFormData }) => {
   const boxBgColor = useColorModeValue('white', 'gray.800');
 
+  // Handle text input changes
   const handleInputChange = (field, value) => {
     setFormData({
       ...formData,
@@ -19,132 +25,106 @@ const EditForm = ({ formData, setFormData, databaseType }) => {
     });
   };
 
+  // Handle toggle switch changes for boolean values
+  const handleToggleChange = (field, value) => {
+    setFormData({
+      ...formData,
+      [field]: value ? 'Active' : 'Inactive',
+    });
+  };
+
+  // Fields to exclude from rendering
+  const excludedFields = [
+    'CreatedAt',        // Exclude Created At
+    'UpdatedAt',        // Exclude Updated At
+    'Database Server',  // Non-editable field
+    'Organisation ID',
+    'Database',
+    'Project ID',
+    'Client ID'
+  ];
+
+  // Editable fields grouped logically
+  const connectionFields = ['Project ID', 'Account', 'Warehouse'];
+  const authenticationFields = ['Username', 'Password', 'Client Email', 'Client ID', 'Private Key ID'];
+
   return (
-    <Box p={4} borderRadius="md" boxShadow="md" bg={boxBgColor}>
-      <VStack spacing={3} align="stretch">
-        <FormControl id="database-server" isRequired>
-          <FormLabel>Database Server</FormLabel>
-          <Input value={databaseType} isReadOnly />
-        </FormControl>
+    <Box p={6} borderRadius="md" boxShadow="md" bg={boxBgColor}>
+      <VStack spacing={6} align="stretch">
+        {/* Heading */}
+        <Heading size="md" mb={4}>
+          Edit Database Configuration
+        </Heading>
 
-        {databaseType === 'BigQuery' && (
-          <>
-            <FormControl id="project-id">
-              <FormLabel>Project ID</FormLabel>
-              <Input
-                value={formData['Project ID'] || ''}
-                onChange={(e) => handleInputChange('Project ID', e.target.value)}
+        {/* Render editable fields in a logically ordered grid layout */}
+        <Grid templateColumns="repeat(2, 1fr)" gap={6}>
+          {/* Connection Fields */}
+          {connectionFields.map(
+            (field) =>
+              formData[field] && !excludedFields.includes(field) && (
+                <GridItem key={field} colSpan={1}>
+                  <FormControl id={field.toLowerCase().replace(/\s/g, '-')}>
+                    <FormLabel>{field}</FormLabel>
+                    <Input
+                      value={formData[field] || ''}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={`Enter ${field}`}
+                    />
+                  </FormControl>
+                </GridItem>
+              )
+          )}
+
+          {/* Authentication Fields */}
+          {authenticationFields.map(
+            (field) =>
+              formData[field] && !excludedFields.includes(field) && (
+                <GridItem key={field} colSpan={1}>
+                  <FormControl id={field.toLowerCase().replace(/\s/g, '-')}>
+                    <FormLabel>{field}</FormLabel>
+                    <Input
+                      type={field === 'Password' ? 'password' : 'text'}
+                      value={formData[field] || ''}
+                      onChange={(e) => handleInputChange(field, e.target.value)}
+                      placeholder={`Enter ${field}`}
+                    />
+                  </FormControl>
+                </GridItem>
+              )
+          )}
+
+          {/* Additional Editable Fields */}
+          {Object.entries(formData)
+            .filter(
+              ([key]) => !excludedFields.includes(key) && ![...connectionFields, ...authenticationFields, 'State'].includes(key)
+            )
+            .map(([key, value]) => (
+              <GridItem key={key} colSpan={1}>
+                <FormControl id={key.toLowerCase().replace(/\s/g, '-')}>
+                  <FormLabel>{key.replace(/_/g, ' ')}</FormLabel>
+                  <Input
+                    value={value || ''}
+                    onChange={(e) => handleInputChange(key, e.target.value)}
+                    placeholder={`Enter ${key}`}
+                  />
+                </FormControl>
+              </GridItem>
+            ))}
+        </Grid>
+        {/* Status Field at the Bottom */}
+        {formData['State'] && (
+          <Box>
+            <FormControl id="state">
+              <FormLabel>Status</FormLabel>
+              <Switch
+                isChecked={formData['State'] === 'Active'}
+                onChange={(e) => handleToggleChange('State', e.target.checked)}
+                colorScheme="teal"
+                size="lg"
               />
             </FormControl>
-
-            <FormControl id="client-email">
-              <FormLabel>Client Email</FormLabel>
-              <Input
-                value={formData['Client Email'] || ''}
-                onChange={(e) => handleInputChange('Client Email', e.target.value)}
-              />
-            </FormControl>
-
-            <FormControl id="client-id">
-              <FormLabel>Client ID</FormLabel>
-              <Input
-                value={formData['Client ID'] || ''}
-                onChange={(e) => handleInputChange('Client ID', e.target.value)}
-              />
-            </FormControl>
-
-            <FormControl id="private-key-id">
-              <FormLabel>Private Key ID</FormLabel>
-              <Input
-                value={formData['Private Key ID'] || ''}
-                onChange={(e) => handleInputChange('Private Key ID', e.target.value)}
-              />
-            </FormControl>
-          </>
+          </Box>
         )}
-
-        {databaseType === 'SnowFlake' && (
-          <>
-            <HStack spacing={3}>
-              <FormControl id="username">
-                <FormLabel>Username</FormLabel>
-                <Input
-                  value={formData['Username'] || ''}
-                  onChange={(e) => handleInputChange('Username', e.target.value)}
-                />
-              </FormControl>
-
-              <FormControl id="password">
-                <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  value={formData['Password'] || ''}
-                  onChange={(e) => handleInputChange('Password', e.target.value)}
-                />
-              </FormControl>
-            </HStack>
-
-            <HStack spacing={3}>
-              <FormControl id="account">
-                <FormLabel>Account</FormLabel>
-                <Input
-                  value={formData['Account'] || ''}
-                  onChange={(e) => handleInputChange('Account', e.target.value)}
-                />
-              </FormControl>
-
-              <FormControl id="warehouse">
-                <FormLabel>Warehouse</FormLabel>
-                <Input
-                  value={formData['Warehouse'] || ''}
-                  onChange={(e) => handleInputChange('Warehouse', e.target.value)}
-                />
-              </FormControl>
-            </HStack>
-
-            <FormControl id="role">
-              <FormLabel>Role</FormLabel>
-              <Input
-                value={formData['Role'] || ''}
-                onChange={(e) => handleInputChange('Role', e.target.value)}
-              />
-            </FormControl>
-          </>
-        )}
-
-        <FormControl id="description">
-          <FormLabel>Description</FormLabel>
-          <Input
-            value={formData['Description'] || ''}
-            onChange={(e) => handleInputChange('Description', e.target.value)}
-          />
-        </FormControl>
-
-        <HStack spacing={3}>
-          <FormControl id="state">
-            <FormLabel>Status</FormLabel>
-            <Input
-              value={formData['State'] || ''}
-              onChange={(e) => handleInputChange('State', e.target.value)}
-            />
-          </FormControl>
-
-          <FormControl id="date-created">
-            <FormLabel>Date Created</FormLabel>
-            <Input
-              value={formData['CreatedAt'] || ''}
-              isReadOnly
-            />
-          </FormControl>
-
-          <FormControl id="date-modified">
-            <FormLabel>Date Modified</FormLabel>
-            <Input
-              value={formData['UpdatedAt'] || ''}
-              isReadOnly
-            />
-          </FormControl>
-        </HStack>
       </VStack>
     </Box>
   );

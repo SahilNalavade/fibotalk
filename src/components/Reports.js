@@ -29,9 +29,11 @@ import {
   TableContainer,
   LinkBox,
   LinkOverlay,
+  Button,
+  ButtonGroup,
 } from '@chakra-ui/react';
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { FaThList, FaTh, FaSync, FaTrash } from 'react-icons/fa';
+import { FaThList, FaTh, FaSync, FaTrash, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import {
   LineChart,
   Line,
@@ -324,75 +326,121 @@ const ReportTab = ({ title, reports, onBreadcrumbUpdate }) => {
 
 const ReportList = ({ reports, onReportClick }) => {
   const hoverBgColor = useColorModeValue('gray.100', 'gray.700');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Pagination logic
+  const totalPages = Math.ceil(reports.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedData = reports.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
 
   return (
-    <TableContainer boxShadow="lg" borderRadius="lg">
-      <Table variant="simple" size="md">
-        <Thead bg="gray.100">
-          <Tr>
-            <Th fontSize="md">Report Name</Th>
-            <Th fontSize="md">Requested By</Th>
-            <Th fontSize="md">Pending Since</Th>
-            <Th fontSize="md">Short Description</Th>
-            <Th fontSize="md"></Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {reports.map((report, index) => (
-            <Tr
-              key={index}
-              _hover={{ bg: hoverBgColor, cursor: 'pointer' }}
-              transition="all 0.2s"
-              sx={{
-                '& .report-actions': { opacity: 0, transition: 'opacity 0.3s ease' },
-                '&:hover .report-actions': { opacity: 1 },
-              }}
-              onClick={() => onReportClick(report)}
-            >
-              <Td fontWeight="medium">
-                <LinkBox>
-                  <LinkOverlay href="#" onClick={(e) => e.preventDefault()}>
-                    {report.name}
-                  </LinkOverlay>
-                </LinkBox>
-              </Td>
-              <Td>{report.requestedBy}</Td>
-              <Td>
-                <Text fontSize="sm" color="gray.600">
-                  {report.pendingSince}
-                </Text>
-              </Td>
-              <Td>
-                <Text fontSize="sm" color="gray.600">
-                  {report.description}
-                </Text>
-              </Td>
-              <Td>
-                <HStack spacing={2} justifyContent="flex-end" className="report-actions">
-                  <Tooltip label="Refresh" aria-label="Refresh">
-                    <IconButton
-                      icon={<FaSync />}
-                      aria-label="Refresh"
-                      size="sm"
-                      variant="ghost"
-                    />
-                  </Tooltip>
-                  <Tooltip label="Delete" aria-label="Delete">
-                    <IconButton
-                      icon={<FaTrash />}
-                      aria-label="Delete"
-                      size="sm"
-                      variant="ghost"
-                      colorScheme="red"
-                    />
-                  </Tooltip>
-                </HStack>
-              </Td>
+    <Box>
+      <TableContainer boxShadow="lg" borderRadius="lg">
+        <Table variant="simple" size="md">
+          <Thead bg="gray.100">
+            <Tr>
+              <Th fontSize="md">Report Name</Th>
+              <Th fontSize="md">Requested By</Th>
+              <Th fontSize="md">Pending Since</Th>
+              <Th fontSize="md">Short Description</Th>
+              <Th fontSize="md"></Th>
             </Tr>
+          </Thead>
+          <Tbody>
+            {paginatedData.map((report, index) => (
+              <Tr
+                key={index}
+                _hover={{ bg: hoverBgColor, cursor: 'pointer' }}
+                transition="all 0.2s"
+                sx={{
+                  '& .report-actions': { opacity: 0, transition: 'opacity 0.3s ease' },
+                  '&:hover .report-actions': { opacity: 1 },
+                }}
+                onClick={() => onReportClick(report)}
+              >
+                <Td fontWeight="medium">
+                  <LinkBox>
+                    <LinkOverlay href="#" onClick={(e) => e.preventDefault()}>
+                      {report.name}
+                    </LinkOverlay>
+                  </LinkBox>
+                </Td>
+                <Td>{report.requestedBy}</Td>
+                <Td>
+                  <Text fontSize="sm" color="gray.600">
+                    {report.pendingSince}
+                  </Text>
+                </Td>
+                <Td>
+                  <Text fontSize="sm" color="gray.600">
+                    {report.description}
+                  </Text>
+                </Td>
+                <Td>
+                  <HStack spacing={2} justifyContent="flex-end" className="report-actions">
+                    <Tooltip label="Refresh" aria-label="Refresh">
+                      <IconButton
+                        icon={<FaSync />}
+                        aria-label="Refresh"
+                        size="sm"
+                        variant="ghost"
+                      />
+                    </Tooltip>
+                    <Tooltip label="Delete" aria-label="Delete">
+                      <IconButton
+                        icon={<FaTrash />}
+                        aria-label="Delete"
+                        size="sm"
+                        variant="ghost"
+                        colorScheme="red"
+                      />
+                    </Tooltip>
+                  </HStack>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+
+      {/* Pagination Controls */}
+      <Flex justifyContent="space-between" alignItems="center" mt={6}>
+        <Text fontSize="sm" color="gray.600">
+          Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, reports.length)} of {reports.length} results
+        </Text>
+        <ButtonGroup variant="outline" spacing={2}>
+          <Button
+            leftIcon={<FaChevronLeft />}
+            onClick={() => handlePageChange(currentPage - 1)}
+            isDisabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          {[...Array(totalPages).keys()].map((page) => (
+            <Button
+              key={page + 1}
+              onClick={() => handlePageChange(page + 1)}
+              variant={currentPage === page + 1 ? 'solid' : 'outline'}
+              colorScheme={currentPage === page + 1 ? 'blue' : 'gray'}
+            >
+              {page + 1}
+            </Button>
           ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+          <Button
+            rightIcon={<FaChevronRight />}
+            onClick={() => handlePageChange(currentPage + 1)}
+            isDisabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </ButtonGroup>
+      </Flex>
+    </Box>
   );
 };
 

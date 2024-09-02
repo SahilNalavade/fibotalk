@@ -1,4 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
 import {
   Box,
   Text,
@@ -22,7 +23,6 @@ import {
   Textarea,
   Flex,
   Tooltip,
-  Image,
   Input,
   Menu,
   MenuButton,
@@ -32,150 +32,156 @@ import {
   InputGroup,
   InputLeftElement,
   Checkbox,
+  useToast,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, SearchIcon, RepeatIcon, DeleteIcon } from '@chakra-ui/icons';
-import { FaSortAlphaDown, FaSortAlphaUpAlt } from 'react-icons/fa';
-import { FaMagic } from 'react-icons/fa';
-
-import { useAuth } from '../auth'; // Adjust path if necessary
+import { FaSortAlphaDown, FaSortAlphaUpAlt, FaMagic } from 'react-icons/fa';
 import { FiRotateCcw } from 'react-icons/fi';
 
-const AnotherPage = () => {
-  const { isSignedIn } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentDescription, setCurrentDescription] = useState('');
-  const [selectedRowIndex, setSelectedRowIndex] = useState(null);
-  const [selectedPropertyIndex, setSelectedPropertyIndex] = useState(null);
-  const [selectedTable, setSelectedTable] = useState(null);
+const SchemaPage = () => {
+  const [schemaData, setSchemaData] = useState([]); // State for schemas
+  const [selectedSchema, setSelectedSchema] = useState(null); // State to track selected schema
+  const [selectedTable, setSelectedTable] = useState(null); // State to track selected table
   const [searchText, setSearchText] = useState('');
   const [descriptionSearchText, setDescriptionSearchText] = useState('');
-  const [propertySearchText, setPropertySearchText] = useState('');
-  const [propertyDescriptionSearchText, setPropertyDescriptionSearchText] = useState('');
+  const [columnDescriptionSearchText, setColumnDescriptionSearchText] = useState('');
+  const [tableData, setTableData] = useState([]);
+  const [columnsData, setColumnsData] = useState([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentDescription, setCurrentDescription] = useState('');
+  const [editingType, setEditingType] = useState('table'); // 'table' or 'column'
+  const [editingIndex, setEditingIndex] = useState(null);
   const [sortOrder, setSortOrder] = useState(null);
   const [descriptionSortOrder, setDescriptionSortOrder] = useState(null);
-  const [propertySortOrder, setPropertySortOrder] = useState(null);
-  const [propertyDescriptionSortOrder, setPropertyDescriptionSortOrder] = useState(null);
-  const [selectedSources, setSelectedSources] = useState([]);
-  const [selectedProperties, setSelectedProperties] = useState([]);
-  const [selectedDescriptions, setSelectedDescriptions] = useState([]);
-  const [selectedPropertyDescriptions, setSelectedPropertyDescriptions] = useState([]);
-  const [statusFilter, setStatusFilter] = useState('all'); // Status filter state
-
+  const [statusFilter, setStatusFilter] = useState('all'); // Status filter state for tables
+  const [columnStatusFilter, setColumnStatusFilter] = useState('all'); // Status filter state for columns
+  const [checkedTables, setCheckedTables] = useState([]); // State to track checked tables
+  const [checkedColumns, setCheckedColumns] = useState([]); // State to track checked columns
+  const [nameSortOrder, setNameSortOrder] = useState(null);
+  const [descriptionColumnSortOrder, setDescriptionColumnSortOrder] = useState(null);
+  const [statusColumnSortOrder, setStatusColumnSortOrder] = useState(null);
+  const [columnSearchText, setColumnSearchText] = useState(''); // State for columns search text
   const inputRef = useRef();
+  const toast = useToast();
 
-  const [tableData, setTableData] = useState([
-    {
-      databaseName: 'Test_User_List',
-      description: 'User list details',
-      status: 'active', // Status of the main table
-      properties: [
-        { name: 'id', type: 'int', nullable: false, description: 'Identifier', status: 'active' },
-        { name: 'username', type: 'varchar(50)', nullable: false, description: 'Username', status: 'active' },
-        { name: 'email', type: 'varchar(100)', nullable: true, description: 'User email', status: 'active' },
-        { name: 'password_hash', type: 'varchar(255)', nullable: false, description: 'Hashed user password', status: 'active' },
-        { name: 'created_at', type: 'timestamp', nullable: false, description: 'Account creation timestamp', status: 'active' },
-        { name: 'updated_at', type: 'timestamp', nullable: true, description: 'Last update timestamp', status: 'active' },
-        { name: 'is_active', type: 'boolean', nullable: false, description: 'Status of the user account', status: 'active' },
-        { name: 'role', type: 'varchar(20)', nullable: false, description: 'Role assigned to the user', status: 'active' },
-        { name: 'profile_picture', type: 'varchar(255)', nullable: true, description: 'URL to the user’s profile picture', status: 'active' },
-        { name: 'last_login', type: 'timestamp', nullable: true, description: 'Timestamp of the last login', status: 'active' },
-      ],
-    },
-  ]);
+  // Fetch schemas data
+  const fetchSchemaData = async () => {
+    try {
+      const response = await axios.get(
+        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaOverview', // Updated endpoint for schema data
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+          },
+        }
+      );
 
-  const openModal = (index, isProperty = false) => {
-    setSelectedRowIndex(index);
-    if (isProperty && selectedTable !== null) {
-      setSelectedPropertyIndex(index);
-      setCurrentDescription(tableData[selectedTable].properties[index].description);
-    } else {
-      setCurrentDescription(tableData[index].description);
+      const records = response.data.records.map((record) => ({
+        id: record.id,
+        schemaName: record.fields['Schema Name'] || 'No Schema Name',
+        description: record.fields['Description'] || 'No Description',
+        status: record.fields['Status'] || 'unknown',
+      }));
+
+      setSchemaData(records);
+    } catch (error) {
+      toast({
+        title: 'Error fetching schema data',
+        description: 'Failed to retrieve schema data from Airtable.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.error('Error fetching schema data from Airtable:', error);
     }
-    setIsModalOpen(true);
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setSelectedRowIndex(null);
-    setCurrentDescription('');
-    setSelectedPropertyIndex(null);
+  // Fetch table data when a schema is selected
+  const fetchTableData = async (schemaName) => {
+    try {
+      const response = await axios.get(
+        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaTable', // Updated endpoint for table data
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+          },
+          params: {
+            filterByFormula: `{Schema Name} = "${schemaName}"`,
+          },
+        }
+      );
+
+      const records = response.data.records.map((record) => ({
+        id: record.id,
+        databaseName: record.fields['Table Name'] || 'No Table Name',
+        description: record.fields['Description'] || 'No Description',
+        status: record.fields['Status'] || 'unknown',
+        properties: [],
+      }));
+
+      setTableData(records);
+      setColumnsData([]); // Clear columns when new tables are fetched
+    } catch (error) {
+      toast({
+        title: 'Error fetching table data',
+        description: 'Failed to retrieve table data from Airtable.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.error('Error fetching table data from Airtable:', error);
+    }
   };
 
-  const saveDescription = () => {
-    if (selectedPropertyIndex !== null) {
-      const updatedTableData = tableData.map((row, tableIndex) =>
-        tableIndex === selectedTable
-          ? {
-              ...row,
-              properties: row.properties.map((prop, propIndex) =>
-                propIndex === selectedPropertyIndex ? { ...prop, description: currentDescription } : prop
-              ),
-            }
-          : row
+  // Fetch columns data for a selected table
+  const fetchColumnsData = async (tableName) => {
+    try {
+      const response = await axios.get(
+        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaColumn', // Updated endpoint for column data
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+          },
+          params: {
+            filterByFormula: `{Table Name} = "${tableName}"`,
+          },
+        }
       );
-      setTableData(updatedTableData);
-    } else if (selectedRowIndex !== null) {
-      const updatedTableData = tableData.map((row, index) =>
-        index === selectedRowIndex ? { ...row, description: currentDescription } : row
-      );
-      setTableData(updatedTableData);
+
+      const records = response.data.records.map((record) => ({
+        id: record.id,
+        columnName: record.fields['Column Name'] || 'No Column Name',
+        description: record.fields['Description'] || 'No Description',
+        status: record.fields['Status'] || 'unknown',
+      }));
+
+      setColumnsData(records);
+    } catch (error) {
+      toast({
+        title: 'Error fetching column data',
+        description: 'Failed to retrieve column data from Airtable.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.error('Error fetching columns data from Airtable:', error);
     }
-    closeModal();
+  };
+
+  useEffect(() => {
+    fetchSchemaData();
+  }, []);
+
+  const handleSchemaSelect = (index) => {
+    setSelectedSchema(index);
+    const selectedSchemaName = schemaData[index]?.schemaName;
+    fetchTableData(selectedSchemaName);
   };
 
   const handleTableSelect = (index) => {
     setSelectedTable(index);
-  };
-
-  const generateAIDescription = () => {
-    const aiDescriptions = [
-      "This table stores user information including unique identifiers, usernames, and email addresses.",
-      "This table tracks user events with details such as event type and timestamp.",
-      "A high-performance database for storing complex JSON data with UUID identifiers.",
-      "This property is a unique identifier for each record in the table.",
-      "Stores the username of the user, used for authentication and display purposes.",
-      "The user's email address, used for communication and notifications.",
-      "A unique identifier for each event recorded in the system.",
-      "References the user associated with this event.",
-      "Categorizes the type of event that occurred.",
-      "Records the exact time when the event took place.",
-      "A universally unique identifier for each record in the Hyperion database.",
-      "Stores complex, semi-structured data in JSON format.",
-      "Timestamp indicating when the record was created in the database.",
-    ];
-
-    const randomDescription = aiDescriptions[Math.floor(Math.random() * aiDescriptions.length)];
-    setCurrentDescription(randomDescription);
-  };
-
-  const generateAIDescriptionForAll = () => {
-    const updatedTableData = tableData.map((table) => {
-      const aiDescription = "This is an AI-generated description.";
-      const updatedProperties = table.properties.map((prop) => ({
-        ...prop,
-        description: prop.description || aiDescription,
-      }));
-
-      return {
-        ...table,
-        description: table.description || aiDescription,
-        properties: updatedProperties,
-      };
-    });
-
-    setTableData(updatedTableData);
-  };
-
-  const saveAllDescriptions = () => {
-    console.log('All descriptions saved!');
-    // Implement the logic to save all descriptions to the database or API
-  };
-
-  // Function to refresh all rows
-  const handleRefreshAll = () => {
-    console.log("Refreshing all rows");
-    // Add logic to refresh all rows
-    // Example: You could re-fetch data from an API or re-run any data update logic.
+    const selectedTableName = tableData[index]?.databaseName;
+    fetchColumnsData(selectedTableName);
   };
 
   const handleSearchChange = (e) => {
@@ -186,210 +192,309 @@ const AnotherPage = () => {
     setDescriptionSearchText(e.target.value);
   };
 
-  const handlePropertySearchChange = (e) => {
-    setPropertySearchText(e.target.value);
+  const handleColumnDescriptionSearchChange = (e) => {
+    setColumnDescriptionSearchText(e.target.value);
   };
 
-  const handlePropertyDescriptionSearchChange = (e) => {
-    setPropertyDescriptionSearchText(e.target.value);
+  const handleColumnSearchChange = (e) => {
+    setColumnSearchText(e.target.value);
   };
 
-  const toggleSortOrder = () => {
-    let sortedData;
-    if (sortOrder === 'asc') {
-      sortedData = [...tableData].sort((a, b) =>
-        a.databaseName.toLowerCase() > b.databaseName.toLowerCase() ? -1 : 1
-      );
-      setSortOrder('desc');
+  const handleRefreshAll = () => {
+    fetchSchemaData();
+    setTableData([]);
+    setColumnsData([]);
+  };
+
+  const openModal = (type, index) => {
+    setEditingType(type);
+    setEditingIndex(index);
+
+    if (type === 'table') {
+      setCurrentDescription(tableData[index]?.description || '');
     } else {
-      sortedData = [...tableData].sort((a, b) =>
-        a.databaseName.toLowerCase() < b.databaseName.toLowerCase() ? -1 : 1
-      );
-      setSortOrder('asc');
+      setCurrentDescription(columnsData[index]?.description || '');
+    }
+
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setCurrentDescription('');
+    setEditingIndex(null);
+  };
+
+  const saveDescription = async () => {
+    try {
+      if (editingType === 'table') {
+        const updatedTableData = [...tableData];
+        updatedTableData[editingIndex].description = currentDescription;
+        setTableData(updatedTableData);
+
+        const recordId = tableData[editingIndex].id;
+        await axios.patch(
+          `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaTable/${recordId}`,
+          {
+            fields: {
+              Description: currentDescription,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            },
+          }
+        );
+      } else {
+        const updatedColumnsData = [...columnsData];
+        updatedColumnsData[editingIndex].description = currentDescription;
+        setColumnsData(updatedColumnsData);
+
+        const recordId = columnsData[editingIndex].id;
+        await axios.patch(
+          `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaColumn/${recordId}`,
+          {
+            fields: {
+              Description: currentDescription,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            },
+          }
+        );
+      }
+
+      toast({
+        title: 'Description saved',
+        description: 'The description has been successfully updated.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error saving description',
+        description: 'Failed to update the description.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+
+    closeModal();
+  };
+
+  const generateAIDescription = () => {
+    const aiDescriptions = [
+      "This table stores user information including unique identifiers, usernames, and email addresses.",
+      "This table tracks user events with details such as event type and timestamp.",
+      "A high-performance database for storing complex JSON data with UUID identifiers.",
+      "This column is a unique identifier for each record in the table.",
+      "Stores the username of the user, used for authentication and display purposes.",
+      "The user's email address, used for communication and notifications.",
+    ];
+
+    const randomDescription = aiDescriptions[Math.floor(Math.random() * aiDescriptions.length)];
+    setCurrentDescription(randomDescription);
+  };
+
+  const toggleSortOrder = (column) => {
+    let sortedData;
+    if (column === 'name') {
+      if (nameSortOrder === 'asc') {
+        sortedData = [...tableData].sort((a, b) =>
+          a.databaseName.toLowerCase() > b.databaseName.toLowerCase() ? -1 : 1
+        );
+        setNameSortOrder('desc');
+      } else {
+        sortedData = [...tableData].sort((a, b) =>
+          a.databaseName.toLowerCase() < b.databaseName.toLowerCase() ? -1 : 1
+        );
+        setNameSortOrder('asc');
+      }
+    } else if (column === 'description') {
+      if (descriptionColumnSortOrder === 'asc') {
+        sortedData = [...tableData].sort((a, b) =>
+          a.description.toLowerCase() > b.description.toLowerCase() ? -1 : 1
+        );
+        setDescriptionColumnSortOrder('desc');
+      } else {
+        sortedData = [...tableData].sort((a, b) =>
+          a.description.toLowerCase() < b.description.toLowerCase() ? -1 : 1
+        );
+        setDescriptionColumnSortOrder('asc');
+      }
+    } else if (column === 'status') {
+      if (statusColumnSortOrder === 'asc') {
+        sortedData = [...tableData].sort((a, b) =>
+          a.status.toLowerCase() > b.status.toLowerCase() ? -1 : 1
+        );
+        setStatusColumnSortOrder('desc');
+      } else {
+        sortedData = [...tableData].sort((a, b) =>
+          a.status.toLowerCase() < b.status.toLowerCase() ? -1 : 1
+        );
+        setStatusColumnSortOrder('asc');
+      }
     }
     setTableData(sortedData);
   };
 
-  const toggleDescriptionSortOrder = () => {
-    let sortedData;
-    if (descriptionSortOrder === 'asc') {
-      sortedData = [...tableData].sort((a, b) =>
-        a.description.toLowerCase() > b.description.toLowerCase() ? -1 : 1
-      );
-      setDescriptionSortOrder('desc');
-    } else {
-      sortedData = [...tableData].sort((a, b) =>
-        a.description.toLowerCase() < b.description.toLowerCase() ? -1 : 1
-      );
-      setDescriptionSortOrder('asc');
-    }
-    setTableData(sortedData);
-  };
+  const handleDelete = async (index, isProperty = false) => {
+    try {
+      if (isProperty && selectedTable !== null) {
+        const updatedColumnsData = columnsData.map((col, colIndex) =>
+          colIndex === index
+            ? { ...col, status: col.status === 'active' ? 'unused' : 'active' }
+            : col
+        );
+        setColumnsData(updatedColumnsData);
 
-  const togglePropertySortOrder = () => {
-    let sortedData;
-    if (propertySortOrder === 'asc') {
-      sortedData = [...tableData[selectedTable].properties].sort((a, b) =>
-        a.name.toLowerCase() > b.name.toLowerCase() ? -1 : 1
-      );
-      setPropertySortOrder('desc');
-    } else {
-      sortedData = [...tableData[selectedTable].properties].sort((a, b) =>
-        a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1
-      );
-      setPropertySortOrder('asc');
-    }
+        const recordId = columnsData[index].id;
+        await axios.patch(
+          `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaColumn/${recordId}`,
+          {
+            fields: {
+              Status: updatedColumnsData[index].status,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            },
+          }
+        );
+      } else if (index !== null) {
+        const updatedTableData = tableData.map((row, rowIndex) =>
+          rowIndex === index
+            ? { ...row, status: row.status === 'active' ? 'unused' : 'active' }
+            : row
+        );
+        setTableData(updatedTableData);
 
-    const updatedTableData = tableData.map((row, index) =>
-      index === selectedTable ? { ...row, properties: sortedData } : row
-    );
-    setTableData(updatedTableData);
-  };
+        const recordId = tableData[index].id;
+        await axios.patch(
+          `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaTable/${recordId}`,
+          {
+            fields: {
+              Status: updatedTableData[index].status,
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            },
+          }
+        );
+      }
 
-  const togglePropertyDescriptionSortOrder = () => {
-    let sortedData;
-    if (propertyDescriptionSortOrder === 'asc') {
-      sortedData = [...tableData[selectedTable].properties].sort((a, b) =>
-        a.description.toLowerCase() > b.description.toLowerCase() ? -1 : 1
-      );
-      setPropertyDescriptionSortOrder('desc');
-    } else {
-      sortedData = [...tableData[selectedTable].properties].sort((a, b) =>
-        a.description.toLowerCase() < b.description.toLowerCase() ? -1 : 1
-      );
-      setPropertyDescriptionSortOrder('asc');
-    }
-
-    const updatedTableData = tableData.map((row, index) =>
-      index === selectedTable ? { ...row, properties: sortedData } : row
-    );
-    setTableData(updatedTableData);
-  };
-
-  const handleCheckboxChange = (databaseName, isChecked) => {
-    if (isChecked) {
-      setSelectedSources([...selectedSources, databaseName]);
-    } else {
-      setSelectedSources(selectedSources.filter((name) => name !== databaseName));
-    }
-  };
-
-  const handlePropertyCheckboxChange = (propertyName, isChecked) => {
-    if (isChecked) {
-      setSelectedProperties([...selectedProperties, propertyName]);
-    } else {
-      setSelectedProperties(selectedProperties.filter((name) => name !== propertyName));
-    }
-  };
-
-  const handleDescriptionCheckboxChange = (description, isChecked) => {
-    if (isChecked) {
-      setSelectedDescriptions([...selectedDescriptions, description]);
-    } else {
-      setSelectedDescriptions(selectedDescriptions.filter((desc) => desc !== description));
-    }
-  };
-
-  const handlePropertyDescriptionCheckboxChange = (description, isChecked) => {
-    if (isChecked) {
-      setSelectedPropertyDescriptions([...selectedPropertyDescriptions, description]);
-    } else {
-      setSelectedPropertyDescriptions(selectedPropertyDescriptions.filter((desc) => desc !== description));
-    }
-  };
-
-  const handleDelete = (index, isProperty = false) => {
-    if (isProperty && selectedTable !== null) {
-      // Update the status of the selected property
-      const updatedTableData = tableData.map((row, tableIndex) =>
-        tableIndex === selectedTable
-          ? {
-              ...row,
-              properties: row.properties.map((prop, propIndex) =>
-                propIndex === index
-                  ? { ...prop, status: prop.status === 'active' ? 'unused' : 'active' }
-                  : prop
-              ),
-            }
-          : row
-      );
-      setTableData(updatedTableData);
-    } else if (index !== null) {
-      // Update the status of the selected table
-      const updatedTableData = tableData.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, status: row.status === 'active' ? 'unused' : 'active' } : row
-      );
-      setTableData(updatedTableData);
+      toast({
+        title: 'Status updated',
+        description: 'The status has been successfully updated.',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error updating status',
+        description: 'Failed to update the status.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     }
   };
 
   const handleRefresh = (index, isProperty = false) => {
     console.log(`Refreshing ${isProperty ? 'property' : 'table'} at index ${index}`);
-    // Implement the logic to refresh the specific table or property
   };
 
   const handleStatusFilterChange = (status) => {
     setStatusFilter(status);
   };
 
-  // Count used and unused tables
-  const usedTablesCount = tableData.filter((row) => row.status === 'active').length;
-  const unusedTablesCount = tableData.length - usedTablesCount;
+  const handleColumnStatusFilterChange = (status) => {
+    setColumnStatusFilter(status);
+  };
 
-  // Count used and unused properties
-  const usedPropertiesCount = selectedTable !== null
-    ? tableData[selectedTable].properties.filter((prop) => prop.status === 'active').length
-    : 0;
-  const unusedPropertiesCount = selectedTable !== null
-    ? tableData[selectedTable].properties.length - usedPropertiesCount
-    : 0;
+  const handleCheckboxChange = (index) => {
+    setCheckedTables((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
 
-  // Filter logic for the table - include all rows regardless of status
-  const filteredTableData = tableData.filter((row) => {
-    const matchesStatus = statusFilter === 'all' ||
+  const handleColumnCheckboxChange = (index) => {
+    setCheckedColumns((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+    );
+  };
+
+  // Filter rows based on checked items, search text, and description search text
+  const filteredTableData = tableData.filter((row, index) => {
+    const isChecked = checkedTables.length === 0 || checkedTables.includes(index);
+    const matchesStatus =
+      statusFilter === 'all' ||
       (statusFilter === 'used' && row.status === 'active') ||
       (statusFilter === 'unused' && row.status === 'unused');
-    const matchesSearchText = row.databaseName.toLowerCase().includes(searchText.toLowerCase()) &&
+    const matchesSearchText =
+      row.databaseName.toLowerCase().includes(searchText.toLowerCase()) &&
       row.description.toLowerCase().includes(descriptionSearchText.toLowerCase());
-    return matchesStatus && matchesSearchText;
+    return isChecked && matchesStatus && matchesSearchText;
   });
 
-  // Filter logic for the properties - include all properties regardless of status
-  const filteredProperties = selectedTable !== null
-    ? tableData[selectedTable].properties.filter((prop) => {
-      const matchesStatus = statusFilter === 'all' ||
-        (statusFilter === 'used' && prop.status === 'active') ||
-        (statusFilter === 'unused' && prop.status === 'unused');
-      const matchesSearchText = prop.name.toLowerCase().includes(propertySearchText.toLowerCase()) &&
-        prop.description.toLowerCase().includes(propertyDescriptionSearchText.toLowerCase());
-      return matchesStatus && matchesSearchText;
-    })
-    : [];
+  // Filter columns data based on checked items and search text in the column names
+  const filteredColumnsData = columnsData.filter((col, index) => {
+    const isChecked = checkedColumns.length === 0 || checkedColumns.includes(index);
+    const matchesStatus =
+      columnStatusFilter === 'all' ||
+      (columnStatusFilter === 'used' && col.status === 'active') ||
+      (columnStatusFilter === 'unused' && col.status === 'unused');
+    return (
+      isChecked &&
+      matchesStatus &&
+      col.columnName.toLowerCase().includes(columnSearchText.toLowerCase()) &&
+      col.description.toLowerCase().includes(columnDescriptionSearchText.toLowerCase())
+    );
+  });
 
   return (
     <main className="flex-grow p-4">
       <Box mx="auto">
-        <Text fontSize="md" color="gray.600" mb={6} align={'left'} fontFamily="Arial, sans-serif">
-          This is the schema for the database. Adding a detailed description will help the AI provide more accurate responses, and we can assist in generating this description.
+        <Text
+          fontSize="md"
+          color="gray.600"
+          mb={6}
+          align={'left'}
+          fontFamily="Arial, sans-serif"
+        >
+          This is the schema for the database. Selecting a table will show its columns.
         </Text>
         <Flex justifyContent="flex-end" mb={4}>
-        <HStack justify="flex-end" mb={4}>
-                        <Button
-                          mr={4}
-                          onClick={handleRefreshAll}
-                          bg="blue.500"
-            color="white"
-            _hover={{ bg: 'blue.600' }}
-            fontFamily="Arial, sans-serif"
-            leftIcon={<RepeatIcon />}
-                        >
-                          Refresh All
-                        </Button>
-                      </HStack>
-          <Tooltip borderRadius='5' label="Create AI Description for All" aria-label="Create AI Description for All">
+          <HStack justify="flex-end" mb={4}>
+            <Button
+              mr={4}
+              onClick={handleRefreshAll}
+              bg="blue.500"
+              color="white"
+              _hover={{ bg: 'blue.600' }}
+              fontFamily="Arial, sans-serif"
+              leftIcon={<RepeatIcon />}
+            >
+              Refresh All
+            </Button>
+          </HStack>
+          <Tooltip
+            borderRadius="5"
+            label="Create AI Description for All"
+            aria-label="Create AI Description for All"
+          >
             <IconButton
               icon={<FaMagic />}
-              onClick={generateAIDescriptionForAll}
+              onClick={generateAIDescription}
               bg="blue.500"
               color="white"
               _hover={{ bg: 'blue.600' }}
@@ -398,15 +503,6 @@ const AnotherPage = () => {
               aria-label="Create AI Description for All"
             />
           </Tooltip>
-          <Button
-            onClick={saveAllDescriptions}
-            bg="blue.500"
-            color="white"
-            _hover={{ bg: 'blue.600' }}
-            fontFamily="Arial, sans-serif"
-          >
-            Save
-          </Button>
         </Flex>
 
         <Flex>
@@ -417,6 +513,7 @@ const AnotherPage = () => {
             mr={4}
             height="400px"
             overflowY="auto"
+            width="10px"
           >
             <Table variant="simple" size="md">
               <Thead bg="gray.100" position="sticky" top="0" zIndex="1">
@@ -424,17 +521,16 @@ const AnotherPage = () => {
                   <Th fontSize="md" fontFamily="Arial, sans-serif">
                     <HStack spacing={4}>
                       <Menu closeOnSelect={false} autoSelect={false}>
-                        <MenuButton as={Button} rightIcon={<ChevronDownIcon />} variant="ghost" size="sm">
-                          Tables ({usedTablesCount} Used / {unusedTablesCount} Unused)
+                        <MenuButton
+                          as={Button}
+                          rightIcon={<ChevronDownIcon />}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          Tables
                         </MenuButton>
                         <MenuList maxH="300px" overflowY="auto">
                           <MenuItem>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={toggleSortOrder}
-                              rightIcon={sortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
-                            />
                             <InputGroup>
                               <InputLeftElement pointerEvents="none">
                                 <SearchIcon color="gray.400" />
@@ -447,22 +543,16 @@ const AnotherPage = () => {
                                 mb={2}
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
-                                onBlur={(e) => {
-                                  if (e.relatedTarget) {
-                                    e.preventDefault();
-                                    inputRef.current.focus();
-                                  }
-                                }}
                                 fontFamily="Arial, sans-serif"
                               />
                             </InputGroup>
                           </MenuItem>
                           <MenuDivider />
-                          {filteredTableData.map((row, index) => (
+                          {tableData.map((row, index) => (
                             <MenuItem key={index} fontFamily="Arial, sans-serif">
                               <Checkbox
-                                isChecked={selectedSources.includes(row.databaseName)}
-                                onChange={(e) => handleCheckboxChange(row.databaseName, e.target.checked)}
+                                isChecked={checkedTables.includes(index)}
+                                onChange={() => handleCheckboxChange(index)}
                                 fontFamily="Arial, sans-serif"
                               >
                                 {row.databaseName}
@@ -474,68 +564,56 @@ const AnotherPage = () => {
                     </HStack>
                   </Th>
                   <Th fontSize="md" fontFamily="Arial, sans-serif">
-                    <HStack spacing={4}>
-                      <Menu closeOnSelect={false} autoSelect={false}>
-                        <MenuButton as={Button} rightIcon={<ChevronDownIcon />} variant="ghost" size="sm">
-                          Descriptions
-                        </MenuButton>
-                        <MenuList maxH="300px" overflowY="auto">
-                          <MenuItem>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={toggleDescriptionSortOrder}
-                              rightIcon={descriptionSortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
+                    <Menu closeOnSelect={false} autoSelect={false}>
+                      <MenuButton
+                        as={Button}
+                        rightIcon={<ChevronDownIcon />}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        Description
+                      </MenuButton>
+                      <MenuList maxH="300px" overflowY="auto">
+                        <MenuItem>
+                          <InputGroup>
+                            <InputLeftElement pointerEvents="none">
+                              <SearchIcon color="gray.400" />
+                            </InputLeftElement>
+                            <Input
+                              placeholder="Filter by description.."
+                              value={descriptionSearchText}
+                              onChange={handleDescriptionSearchChange}
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                              fontFamily="Arial, sans-serif"
                             />
-                            <InputGroup>
-                              <InputLeftElement pointerEvents="none">
-                                <SearchIcon color="gray.400" />
-                              </InputLeftElement>
-                              <Input
-                                placeholder="Filter by description.."
-                                value={descriptionSearchText}
-                                onChange={handleDescriptionSearchChange}
-                                mb={2}
-                                autoFocus
-                                onClick={(e) => e.stopPropagation()}
-                                fontFamily="Arial, sans-serif"
-                              />
-                            </InputGroup>
-                          </MenuItem>
-                          <MenuDivider />
-                          {filteredTableData.map((row, index) => (
-                            <MenuItem key={index} fontFamily="Arial, sans-serif">
-                              <Checkbox
-                                isChecked={selectedDescriptions.includes(row.description)}
-                                onChange={(e) => handleDescriptionCheckboxChange(row.description, e.target.checked)}
-                                fontFamily="Arial, sans-serif"
-                              >
-                                {row.description || '+ Add Description'}
-                              </Checkbox>
-                            </MenuItem>
-                          ))}
-                        </MenuList>
-                      </Menu>
-                    </HStack>
+                          </InputGroup>
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
                   </Th>
                   <Th fontSize="md" fontFamily="Arial, sans-serif">
-                    <HStack spacing={4}>
-                      <Menu closeOnSelect={false} autoSelect={false}>
-                        <MenuButton
-                          as={Button}
-                          rightIcon={<ChevronDownIcon />}
-                          variant="ghost"
-                          size="sm"
-                        >
-                          Status
-                        </MenuButton>
-                        <MenuList>
-                          <MenuItem onClick={() => handleStatusFilterChange('all')}>All</MenuItem>
-                          <MenuItem onClick={() => handleStatusFilterChange('used')}>Used</MenuItem>
-                          <MenuItem onClick={() => handleStatusFilterChange('unused')}>Unused</MenuItem>
-                        </MenuList>
-                      </Menu>
-                    </HStack>
+                    <Menu closeOnSelect={false} autoSelect={false}>
+                      <MenuButton
+                        as={Button}
+                        rightIcon={<ChevronDownIcon />}
+                        variant="ghost"
+                        size="sm"
+                      >
+                        Status
+                      </MenuButton>
+                      <MenuList>
+                        <MenuItem onClick={() => handleStatusFilterChange('all')}>
+                          All
+                        </MenuItem>
+                        <MenuItem onClick={() => handleStatusFilterChange('used')}>
+                          Used
+                        </MenuItem>
+                        <MenuItem onClick={() => handleStatusFilterChange('unused')}>
+                          Unused
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
                   </Th>
                   <Th fontSize="md" fontFamily="Arial, sans-serif"></Th>
                 </Tr>
@@ -544,15 +622,16 @@ const AnotherPage = () => {
                 {filteredTableData.map((row, index) => (
                   <Tr
                     key={index}
-                    _hover={{ bg: 'gray.50', '.action-icons': { opacity: 1 } }}
+                    _hover={{ bg: 'gray.50' }}
                     transition="all 0.2s"
                     onClick={() => handleTableSelect(index)}
-                    bg={selectedTable === index ? 'blue.100' : row.status === 'unused' ? 'gray.200' : 'inherit'}
+                    bg={selectedTable === index ? 'blue.100' : 'inherit'}
                     cursor="pointer"
                     fontFamily="Arial, sans-serif"
-                    opacity={row.status === 'unused' ? 0.6 : 1} // Adjust opacity for unused rows
                   >
-                    <Td fontWeight="medium" fontFamily="Arial, sans-serif">{row.databaseName}</Td>
+                    <Td fontWeight="medium" fontFamily="Arial, sans-serif">
+                      {row.databaseName}
+                    </Td>
                     <Td fontFamily="Arial, sans-serif">
                       <Button
                         size="sm"
@@ -560,7 +639,7 @@ const AnotherPage = () => {
                         color={'gray.600'}
                         onClick={(e) => {
                           e.stopPropagation();
-                          openModal(index);
+                          openModal('table', index);
                         }}
                         _hover={{ bg: 'transparent' }}
                         _focus={{ boxShadow: 'none' }}
@@ -582,13 +661,7 @@ const AnotherPage = () => {
                       {row.status === 'active' ? 'Used' : 'Unused'}
                     </Td>
                     <Td textAlign="right" fontFamily="Arial, sans-serif">
-                      <HStack
-                        spacing={2}
-                        justify="flex-end"
-                        className="action-icons"
-                        opacity={0}
-                        transition="opacity 0.2s"
-                      >
+                      <HStack spacing={2} justify="flex-end">
                         <IconButton
                           size="sm"
                           icon={<RepeatIcon />}
@@ -596,18 +669,22 @@ const AnotherPage = () => {
                           color="blue.500"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleRefresh(index); // Call handleRefresh for the main table
+                            handleRefresh(index);
                           }}
                           fontFamily="Arial, sans-serif"
                         />
                         <IconButton
                           size="sm"
-                          icon={row.status === 'active' ? <DeleteIcon /> : <FiRotateCcw />}
-                          aria-label={row.status === 'active' ? "Delete" : "Restore"}
-                          color={row.status === 'active' ? "red.500" : "green.500"}
+                          icon={
+                            row.status === 'active' ? <DeleteIcon /> : <FiRotateCcw />
+                          }
+                          aria-label={
+                            row.status === 'active' ? 'Delete' : 'Restore'
+                          }
+                          color={row.status === 'active' ? 'red.500' : 'green.500'}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(index); // Call handleDelete for the main table
+                            handleDelete(index);
                           }}
                           fontFamily="Arial, sans-serif"
                         />
@@ -619,40 +696,37 @@ const AnotherPage = () => {
             </Table>
           </TableContainer>
 
-          <TableContainer
-            boxShadow="lg"
-            borderRadius="lg"
-            flex="1"
-            height="400px"
-            overflowY="auto"
-            width="10px"    //IDK why but this works, it is keeping the table width constant (will change in later fix)
-          >
-            <Table variant="simple" size="md">
-              <Thead bg="gray.100" position="sticky" top="0" zIndex="1">
-                <Tr>
-                  <Th fontSize="md" fontFamily="Arial, sans-serif">
-                    <HStack spacing={4}>
+          {selectedTable !== null && (
+            <TableContainer
+              boxShadow="lg"
+              borderRadius="lg"
+              flex="1"
+              height="400px"
+              overflowY="auto"
+            >
+              <Table variant="simple" size="md">
+                <Thead bg="gray.100" position="sticky" top="0" zIndex="1">
+                  <Tr>
+                    <Th fontSize="md" fontFamily="Arial, sans-serif">
                       <Menu closeOnSelect={false} autoSelect={false}>
-                        <MenuButton as={Button} rightIcon={<ChevronDownIcon />} variant="ghost" size="sm">
-                          Properties ({usedPropertiesCount} Used / {unusedPropertiesCount} Unused)
+                        <MenuButton
+                          as={Button}
+                          rightIcon={<ChevronDownIcon />}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          Columns
                         </MenuButton>
                         <MenuList maxH="300px" overflowY="auto">
                           <MenuItem>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={togglePropertySortOrder}
-                              rightIcon={propertySortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
-                            />
                             <InputGroup>
                               <InputLeftElement pointerEvents="none">
                                 <SearchIcon color="gray.400" />
                               </InputLeftElement>
                               <Input
-                                placeholder="Filter by property.."
-                                value={propertySearchText}
-                                onChange={handlePropertySearchChange}
-                                mb={2}
+                                placeholder="Filter by column.."
+                                value={columnSearchText}
+                                onChange={handleColumnSearchChange}
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
                                 fontFamily="Arial, sans-serif"
@@ -660,170 +734,157 @@ const AnotherPage = () => {
                             </InputGroup>
                           </MenuItem>
                           <MenuDivider />
-                          {filteredProperties.map((prop, index) => (
+                          {columnsData.map((col, index) => (
                             <MenuItem key={index} fontFamily="Arial, sans-serif">
                               <Checkbox
-                                isChecked={selectedProperties.includes(prop.name)}
-                                onChange={(e) => handlePropertyCheckboxChange(prop.name, e.target.checked)}
+                                isChecked={checkedColumns.includes(index)}
+                                onChange={() => handleColumnCheckboxChange(index)}
                                 fontFamily="Arial, sans-serif"
                               >
-                                {prop.name}
+                                {col.columnName}
                               </Checkbox>
                             </MenuItem>
                           ))}
                         </MenuList>
                       </Menu>
-                    </HStack>
-                  </Th>
-                  <Th fontSize="md" fontFamily="Arial, sans-serif">
-                    <HStack spacing={4}>
+                    </Th>
+                    <Th fontSize="md" fontFamily="Arial, sans-serif">
                       <Menu closeOnSelect={false} autoSelect={false}>
-                        <MenuButton as={Button} rightIcon={<ChevronDownIcon />} variant="ghost" size="sm">
-                          Descriptions
+                        <MenuButton
+                          as={Button}
+                          rightIcon={<ChevronDownIcon />}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          Description
                         </MenuButton>
                         <MenuList maxH="300px" overflowY="auto">
                           <MenuItem>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={togglePropertyDescriptionSortOrder}
-                              rightIcon={propertyDescriptionSortOrder === 'asc' ? <FaSortAlphaDown /> : <FaSortAlphaUpAlt />}
-                            />
                             <InputGroup>
                               <InputLeftElement pointerEvents="none">
                                 <SearchIcon color="gray.400" />
                               </InputLeftElement>
                               <Input
                                 placeholder="Filter by description.."
-                                value={propertyDescriptionSearchText}
-                                onChange={handlePropertyDescriptionSearchChange}
-                                mb={2}
+                                value={columnDescriptionSearchText}
+                                onChange={handleColumnDescriptionSearchChange}
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
                                 fontFamily="Arial, sans-serif"
                               />
                             </InputGroup>
                           </MenuItem>
-                          <MenuDivider />
-                          {filteredProperties.map((prop, index) => (
-                            <MenuItem key={index} fontFamily="Arial, sans-serif">
-                              <Checkbox
-                                isChecked={selectedPropertyDescriptions.includes(prop.description)}
-                                onChange={(e) => handlePropertyDescriptionCheckboxChange(prop.description, e.target.checked)}
-                                fontFamily="Arial, sans-serif"
-                              >
-                                {prop.description || '+ Add Description'}
-                              </Checkbox>
-                            </MenuItem>
-                          ))}
                         </MenuList>
                       </Menu>
-                    </HStack>
-                  </Th>
-                  <Th fontSize="md">
-                                <HStack spacing={4}>
-                                  <Menu closeOnSelect={false} autoSelect={false}>
-                                    <MenuButton
-                                      as={Button}
-                                      rightIcon={<ChevronDownIcon />}
-                                      variant="ghost"
-                                      size="sm"
-                                    >
-                                      Status
-                                    </MenuButton>
-                                    <MenuList>
-                                      <MenuItem onClick={() => handleStatusFilterChange('all')}>All</MenuItem>
-                                      <MenuItem onClick={() => handleStatusFilterChange('used')}>Used</MenuItem>
-                                      <MenuItem onClick={() => handleStatusFilterChange('unused')}>Unused</MenuItem>
-                                    </MenuList>
-                                  </Menu>
-                                </HStack>
-                              </Th> 
-                  <Th fontSize="md" fontFamily="Arial, sans-serif"></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {filteredProperties.map((prop, index) => (
-                  <Tr
-                    key={index}
-                    _hover={{ bg: 'gray.50', '.action-icons': { opacity: 1 } }}
-                    transition="all 0.2s"
-                    fontFamily="Arial, sans-serif"
-                    bg={prop.status === 'unused' ? 'gray.200' : 'inherit'}
-                    opacity={prop.status === 'unused' ? 0.6 : 1} // Adjust opacity for unused properties
-                  >
-                    <Td fontWeight="medium" fontFamily="Arial, sans-serif">{prop.name}</Td>
-                    <Td fontFamily="Arial, sans-serif">
-                      <Button
-                        size="sm"
-                        variant="link"
-                        color={'gray.600'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openModal(index, true);
-                        }}
-                        _hover={{ bg: 'transparent' }}
-                        _focus={{ boxShadow: 'none' }}
-                        fontFamily="Arial, sans-serif"
-                      >
-                        {prop.description || '+ Add Description'}
-                      </Button>
-                    </Td>
-                    <Td fontFamily="Arial, sans-serif">
-                      <Box
-                        as="span"
-                        display="inline-block"
-                        w="10px"
-                        h="10px"
-                        borderRadius="50%"
-                        bg={prop.status === 'active' ? 'green.500' : 'red.500'}
-                        mr={2}
-                      />
-                      {prop.status === 'active' ? 'Used' : 'Unused'}
-                    </Td>
-                    <Td textAlign="right" fontFamily="Arial, sans-serif">
-                      <HStack
-                        spacing={2}
-                        justify="flex-end"
-                        className="action-icons"
-                        opacity={0}
-                        transition="opacity 0.2s"
-                      >
-                        <IconButton
+                    </Th>
+                    <Th fontSize="md" fontFamily="Arial, sans-serif">
+                      <Menu closeOnSelect={false} autoSelect={false}>
+                        <MenuButton
+                          as={Button}
+                          rightIcon={<ChevronDownIcon />}
+                          variant="ghost"
                           size="sm"
-                          icon={<RepeatIcon />}
-                          aria-label="Refresh"
-                          color="blue.500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRefresh(index, true); // Call handleRefresh for properties
-                          }}
-                          fontFamily="Arial, sans-serif"
-                        />
-                        <IconButton
-                          size="sm"
-                          icon={prop.status === 'active' ? <DeleteIcon /> : <FiRotateCcw />}
-                          aria-label={prop.status === 'active' ? "Delete" : "Restore"}
-                          color={prop.status === 'active' ? "red.500" : "green.500"}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(index, true); // Call handleDelete for properties
-                          }}
-                          fontFamily="Arial, sans-serif"
-                        />
-                      </HStack>
-                    </Td>
+                        >
+                          Status
+                        </MenuButton>
+                        <MenuList>
+                          <MenuItem onClick={() => handleColumnStatusFilterChange('all')}>
+                            All
+                          </MenuItem>
+                          <MenuItem onClick={() => handleColumnStatusFilterChange('used')}>
+                            Used
+                          </MenuItem>
+                          <MenuItem onClick={() => handleColumnStatusFilterChange('unused')}>
+                            Unused
+                          </MenuItem>
+                        </MenuList>
+                      </Menu>
+                    </Th>
+                    <Th fontSize="md" fontFamily="Arial, sans-serif"></Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
+                </Thead>
+                <Tbody>
+                  {filteredColumnsData.map((col, index) => (
+                    <Tr
+                      key={index}
+                      _hover={{ bg: 'gray.50' }}
+                      transition="all 0.2s"
+                      fontFamily="Arial, sans-serif"
+                      cursor="pointer"
+                    >
+                      <Td fontFamily="Arial, sans-serif">{col.columnName}</Td>
+                      <Td fontFamily="Arial, sans-serif">
+                        <Button
+                          size="sm"
+                          variant="link"
+                          color={'gray.600'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openModal('column', index);
+                          }}
+                          _hover={{ bg: 'transparent' }}
+                          _focus={{ boxShadow: 'none' }}
+                          fontFamily="Arial, sans-serif"
+                        >
+                          {col.description || '+ Add Description'}
+                        </Button>
+                      </Td>
+                      <Td fontFamily="Arial, sans-serif">
+                        <Box
+                          as="span"
+                          display="inline-block"
+                          w="10px"
+                          h="10px"
+                          borderRadius="50%"
+                          bg={col.status === 'active' ? 'green.500' : 'red.500'}
+                          mr={2}
+                        />
+                        {col.status === 'active' ? 'Used' : 'Unused'}
+                      </Td>
+                      <Td textAlign="right" fontFamily="Arial, sans-serif">
+                        <HStack spacing={2} justify="flex-end">
+                          <IconButton
+                            size="sm"
+                            icon={<RepeatIcon />}
+                            aria-label="Refresh"
+                            color="blue.500"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRefresh(index, true);
+                            }}
+                            fontFamily="Arial, sans-serif"
+                          />
+                          <IconButton
+                            size="sm"
+                            icon={
+                              col.status === 'active' ? <DeleteIcon /> : <FiRotateCcw />
+                            }
+                            aria-label={
+                              col.status === 'active' ? 'Delete' : 'Restore'
+                            }
+                            color={col.status === 'active' ? 'red.500' : 'green.500'}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(index, true);
+                            }}
+                            fontFamily="Arial, sans-serif"
+                          />
+                        </HStack>
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          )}
         </Flex>
 
         <Modal isOpen={isModalOpen} onClose={closeModal}>
           <ModalOverlay />
           <ModalContent>
-            <ModalHeader fontFamily="Arial, sans-serif">Update Description</ModalHeader>
+            <ModalHeader fontFamily="Arial, sans-serif">
+              Update Description
+            </ModalHeader>
             <ModalCloseButton />
             <ModalBody>
               <Textarea
@@ -836,10 +897,15 @@ const AnotherPage = () => {
 
             <ModalFooter>
               <HStack spacing={4} w="full" justify="space-between">
-                <Tooltip label="Generate description using AI" aria-label="A tooltip" hasArrow placement="bottom-start">
+                <Tooltip
+                  label="Generate description using AI"
+                  aria-label="A tooltip"
+                  hasArrow
+                  placement="bottom-start"
+                >
                   <Button
                     onClick={generateAIDescription}
-                    leftIcon={<Image src="/ai-logo.png" boxSize="30px" alt="AI Icon" />}
+                    leftIcon={<FaMagic />}
                     bg="transparent"
                     _hover={{ bg: 'transparent' }}
                     _active={{ bg: 'transparent' }}
@@ -847,10 +913,21 @@ const AnotherPage = () => {
                   />
                 </Tooltip>
                 <div>
-                  <Button variant="ghost" onClick={closeModal} mr={5} fontFamily="Arial, sans-serif">
+                  <Button
+                    variant="ghost"
+                    onClick={closeModal}
+                    mr={5}
+                    fontFamily="Arial, sans-serif"
+                  >
                     Cancel
                   </Button>
-                  <Button bg="black" color="white" _hover={{ bg: 'gray.800' }} onClick={saveDescription} fontFamily="Arial, sans-serif">
+                  <Button
+                    bg="black"
+                    color="white"
+                    _hover={{ bg: 'gray.800' }}
+                    onClick={saveDescription}
+                    fontFamily="Arial, sans-serif"
+                  >
                     Save
                   </Button>
                 </div>
@@ -863,4 +940,4 @@ const AnotherPage = () => {
   );
 };
 
-export default AnotherPage;
+export default SchemaPage;

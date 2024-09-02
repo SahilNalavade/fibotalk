@@ -1,0 +1,251 @@
+// AnotherPage.jsx
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  Box,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  Text,
+  Button,
+  useToast,
+  HStack,
+  VStack,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
+  IconButton,
+  Input,
+} from '@chakra-ui/react';
+import { ChevronRightIcon, ArrowBackIcon } from '@chakra-ui/icons';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import EditForm from './EditForm';
+import TopNav from './TopNav';
+import SideNav from './SideNav';
+
+const AnotherPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const toast = useToast();
+  const databaseInfo = location.state?.databaseInfo || {};
+  const [formData, setFormData] = useState(databaseInfo.fields || {});
+  const [isConfirmSaveOpen, setIsConfirmSaveOpen] = useState(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const cancelRef = useRef();
+
+  useEffect(() => {
+    if (!databaseInfo.fields) {
+      toast({
+        title: 'No database information found.',
+        description: 'Please select a database from the list.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/connections');
+    }
+  }, [databaseInfo, navigate, toast]);
+
+  const handleSave = async (updatedData) => {
+    try {
+      const response = await axios.patch(
+        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig/${databaseInfo.id}`,
+        { fields: updatedData },
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      setFormData(response.data.fields);
+      toast({
+        title: 'Saved Successfully.',
+        description: 'Database details have been updated.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      setIsConfirmSaveOpen(false);
+    } catch (error) {
+      console.error('Error saving data:', error);
+      toast({
+        title: 'Save Failed.',
+        description: 'An error occurred while saving the details.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await axios.delete(
+        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig/${databaseInfo.id}`,
+        {
+          headers: {
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+          },
+        }
+      );
+      toast({
+        title: 'Deleted Successfully.',
+        description: 'The database configuration has been deleted.',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      navigate('/connections');
+    } catch (error) {
+      console.error('Error deleting data:', error);
+      toast({
+        title: 'Delete Failed.',
+        description: 'An error occurred while deleting the configuration.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsConfirmDeleteOpen(false);
+      setDeleteConfirmation('');
+    }
+  };
+
+  const handleCancel = () => {
+    navigate('/connections');
+  };
+
+  return (
+    <div className="Dashboard flex flex-col h-screen">
+      <TopNav />
+      <div className="flex flex-grow overflow-hidden">
+        <SideNav />
+        <main className="flex-grow p-4" style={{ paddingTop: '105px' }}>
+          <Box maxWidth="90%" mx="auto">
+            <Box mt={4} display="flex" justifyContent="space-between" alignItems="center">
+              <Breadcrumb
+                spacing="8px"
+                separator={<ChevronRightIcon color="gray.500" boxSize="18px" />}
+                fontSize="lg"
+              >
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/connections" fontSize="lg">
+                    Connection
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/connections" fontSize="lg">
+                    Database Configuration
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbItem>
+                  <BreadcrumbLink fontSize="lg" fontWeight="semibold">
+                    Schema
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+              </Breadcrumb>
+            </Box>
+
+            <Tabs pt={12}>
+              <TabList mb="1em">
+                <Tab>Schema</Tab>
+                <Tab>Settings</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>
+                  <Text fontSize="md" color="gray.600" mb={6} align="left">
+                    This is the schema for the database. Adding a detailed description will help the AI provide more
+                    accurate responses, and we can assist in generating this description.
+                  </Text>
+                </TabPanel>
+
+                <TabPanel>
+                  <EditForm formData={formData} setFormData={setFormData} databaseType={databaseInfo.databaseName} />
+                  <VStack spacing={4} mt={4} align="stretch">
+                    <HStack spacing={4} justify="flex-end">
+                      <Button colorScheme="red" onClick={() => setIsConfirmDeleteOpen(true)}>
+                        Delete
+                      </Button>
+                      <Button colorScheme="blue" onClick={() => setIsConfirmSaveOpen(true)}>
+                        Save
+                      </Button>
+                    </HStack>
+                  </VStack>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
+          </Box>
+        </main>
+      </div>
+
+      {/* Save Confirmation Dialog */}
+      <AlertDialog isOpen={isConfirmSaveOpen} leastDestructiveRef={cancelRef} onClose={() => setIsConfirmSaveOpen(false)}>
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Confirm Save
+            </AlertDialogHeader>
+            <AlertDialogBody>Saving changes will update the database configuration. Do you want to proceed?</AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={() => setIsConfirmSaveOpen(false)} bg="white">
+                Cancel
+              </Button>
+              <Button onClick={() => handleSave(formData)} ml={3} colorScheme="blue">
+                Yes, Save
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isConfirmDeleteOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={() => setIsConfirmDeleteOpen(false)}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Confirm Delete
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              Are you sure you want to delete this configuration? Please type <b>delete</b> to confirm.
+              <Input
+                mt={4}
+                placeholder="Type delete"
+                value={deleteConfirmation}
+                onChange={(e) => setDeleteConfirmation(e.target.value)}
+              />
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={() => setIsConfirmDeleteOpen(false)} bg="white">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDelete}
+                ml={3}
+                colorScheme="red"
+                isDisabled={deleteConfirmation.toLowerCase() !== 'delete'}
+              >
+                Confirm Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
+    </div>
+  );
+};
+
+export default AnotherPage;

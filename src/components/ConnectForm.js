@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+// ConnectForm.jsx
+import React, { useState, useRef, useCallback } from 'react';
 import {
   FormControl,
   FormLabel,
@@ -23,15 +24,33 @@ import {
   Tooltip,
   Icon,
   Spinner,
+  Link,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+  AlertDialog,
+  AlertDialogOverlay,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogBody,
+  AlertDialogFooter,
 } from '@chakra-ui/react';
 import axios from 'axios';
 import { ViewIcon, ViewOffIcon, ChevronDownIcon, ArrowBackIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { FiUpload } from 'react-icons/fi';
 
-const ConnectForm = ({ onBack }) => {
+const ConnectForm = ({ onBack, onSaveSuccess }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isEnabled, setIsEnabled] = useState(false);
-  const [loading, setLoading] = useState(false); // Loading state
+  const [loading, setLoading] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const cancelRef = useRef();
+
   const [formData, setFormData] = useState({
     databaseServer: '',
     username: '',
@@ -43,6 +62,7 @@ const ConnectForm = ({ onBack }) => {
     serviceAccountKey: null,
     projectId: '',
     jsonParsedData: null,
+    bigQueryDatabase: '',
   });
 
   const [selectedFile, setSelectedFile] = useState(null);
@@ -51,10 +71,25 @@ const ConnectForm = ({ onBack }) => {
   const toast = useToast();
   const boxBgColor = useColorModeValue('white', 'gray.800');
 
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
   const databaseServers = [
     { value: 'BigQuery', label: 'BigQuery', logo: '/bigquery.png' },
     { value: 'SnowFlake', label: 'SnowFlake', logo: '/Snowflake.png' },
   ];
+
+  const sampleJsonStructure = {
+    type: 'service_account',
+    project_id: 'your-project-id',
+    private_key_id: 'your-private-key-id',
+    private_key: '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcw...END PRIVATE KEY-----\n',
+    client_email: 'your-service-account-email@your-project-id.iam.gserviceaccount.com',
+    client_id: 'your-client-id',
+    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+    token_uri: 'https://oauth2.googleapis.com/token',
+    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+    client_x509_cert_url: 'https://www.googleapis.com/robot/v1/metadata/x509/your-service-account-email@your-project-id.iam.gserviceaccount.com',
+  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -64,12 +99,18 @@ const ConnectForm = ({ onBack }) => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target.result);
-        setFormData({
-          ...formData,
+
+        // Validate required fields in JSON
+        if (!json.project_id || !json.client_email || !json.client_id || !json.private_key_id) {
+          throw new Error('JSON file is missing required fields.');
+        }
+
+        setFormData((prev) => ({
+          ...prev,
           serviceAccountKey: file,
           projectId: json.project_id,
           jsonParsedData: json,
-        });
+        }));
         toast({
           title: 'File Uploaded',
           description: 'The service account JSON file has been successfully parsed.',
@@ -81,7 +122,7 @@ const ConnectForm = ({ onBack }) => {
       } catch (error) {
         toast({
           title: 'File Upload Error',
-          description: 'Failed to parse the JSON file. Please ensure it is a valid BigQuery service account key.',
+          description: error.message || 'Failed to parse the JSON file. Please ensure it is a valid BigQuery service account key.',
           status: 'error',
           duration: 5000,
           isClosable: true,
@@ -116,12 +157,14 @@ const ConnectForm = ({ onBack }) => {
       serviceAccountKey,
       projectId,
       jsonParsedData,
+      bigQueryDatabase,
     } = formData;
 
+    // Validate form data
     if (
       !databaseServer ||
       (databaseServer === 'SnowFlake' && (!username || !password || !account || !warehouse || !role || !database)) ||
-      (databaseServer === 'BigQuery' && (!serviceAccountKey || !projectId))
+      (databaseServer === 'BigQuery' && (!serviceAccountKey || !projectId || !bigQueryDatabase))
     ) {
       toast({
         title: 'Form Incomplete',
@@ -134,40 +177,48 @@ const ConnectForm = ({ onBack }) => {
       return;
     }
 
-    setLoading(true); // Set loading to true while submitting
+    setLoading(true);
+
+    const commonData = {
+      'Organisation ID': new Date().getTime().toString(),
+      'Database Server': databaseServer,
+      Database: bigQueryDatabase,
+      serviceAccountKey: jsonParsedData,
+    };
 
     const airtableData = {
       fields: {
-        "Organisation ID": new Date().getTime().toString(),
-        "Database Server": databaseServer,
+        'Organisation ID': commonData['Organisation ID'],
+        'Database Server': commonData['Database Server'],
+        Database: commonData['Database'],
         ...(databaseServer === 'SnowFlake' && {
-          "Username": username,
-          "Password": password, // Remember to handle this securely
-          "Account": account,
-          "Warehouse": warehouse,
-          "Role": role,
-          "Database": database,
+          Username: username,
+          Password: password,
+          Account: account,
+          Warehouse: warehouse,
+          Role: role,
+          Database: database,
         }),
         ...(databaseServer === 'BigQuery' && {
-          "Project ID": projectId,
-          "Client Email": jsonParsedData.client_email,
-          "Client ID": jsonParsedData.client_id,
-          "Private Key ID": jsonParsedData.private_key_id,
-          "Private Key": jsonParsedData.private_key,
-          "Auth URI": jsonParsedData.auth_uri,
-          "Token URI": jsonParsedData.token_uri,
-          "Auth Provider URL": jsonParsedData.auth_provider_x509_cert_url,
-          "Client Cert URL": jsonParsedData.client_x509_cert_url,
-          "Universe Domain": jsonParsedData.universe_domain,
+          'Project ID': projectId,
+          'Client Email': jsonParsedData.client_email,
+          'Client ID': jsonParsedData.client_id,
+          'Private Key ID': jsonParsedData.private_key_id,
+          'Private Key': jsonParsedData.private_key,
+          'Auth URI': jsonParsedData.auth_uri,
+          'Token URI': jsonParsedData.token_uri,
+          'Auth Provider URL': jsonParsedData.auth_provider_x509_cert_url,
+          'Client Cert URL': jsonParsedData.client_x509_cert_url,
         }),
-        "State": isEnabled ? "Active" : "Inactive",
-        "CreatedAt": new Date().toISOString(),
-        "UpdatedAt": new Date().toISOString(),
+        State: isEnabled ? 'Active' : 'Inactive',
+        CreatedAt: new Date().toISOString(),
+        UpdatedAt: new Date().toISOString(),
       },
     };
 
     try {
-      const response = await axios.post(
+      // Send data to Airtable
+      const airtableResponse = await axios.post(
         `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
         airtableData,
         {
@@ -178,18 +229,56 @@ const ConnectForm = ({ onBack }) => {
         }
       );
 
-      console.log('Airtable response:', response.data);
+      if (airtableResponse.status === 200) {
+        toast({
+          title: 'Configuration Saved',
+          description: 'Your database configuration has been saved to Airtable.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top-right',
+        });
+      }
 
-      toast({
-        title: 'Form Saved',
-        description: 'Your database configuration has been saved to Airtable.',
-        status: 'success',
-        duration: 5000,
-        isClosable: true,
-        position: 'top-right',
-      });
+      // Send data to Flask API
+      const flaskResponse = await axios.post('/api/save-bq-schema', commonData);
+      if (flaskResponse.status === 200) {
+        toast({
+          title: 'Schema Saved',
+          description: 'Your schema data has been saved to Airtable via Flask API.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top-right',
+        });
+      }
 
-      // Reset the form after saving
+      // Send data to additional Flask endpoints
+      const tableResponse = await axios.post('http://localhost:5001/save-bq-tables', commonData);
+      if (tableResponse.status === 200) {
+        toast({
+          title: 'Tables Saved',
+          description: 'BigQuery tables data has been successfully sent to Flask.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top-right',
+        });
+      }
+
+      const columnResponse = await axios.post('http://localhost:5002/save-bq-columns', commonData);
+      if (columnResponse.status === 200) {
+        toast({
+          title: 'Columns Saved',
+          description: 'BigQuery columns data has been successfully sent to Flask.',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+          position: 'top-right',
+        });
+      }
+
+      // Reset form data after successful save
       setFormData({
         databaseServer: '',
         username: '',
@@ -201,32 +290,43 @@ const ConnectForm = ({ onBack }) => {
         serviceAccountKey: null,
         projectId: '',
         jsonParsedData: null,
+        bigQueryDatabase: '',
       });
       setSelectedFile(null);
       setIsEnabled(false);
 
+      // Trigger the parent component to show the TableComponent
+      if (onSaveSuccess) {
+        onSaveSuccess(); // Callback to switch view to TableComponent
+      }
+
       onBack();
     } catch (error) {
-      console.error('Error saving to Airtable:', error.response?.data || error.message);
+      console.error('Error saving data:', error.response?.data || error.message);
       toast({
         title: 'Error',
-        description: error.response?.data?.error?.message || 'There was an error saving your data to Airtable. Please try again.',
+        description: error.response?.data?.error || 'There was an error saving your data. Please try again.',
         status: 'error',
         duration: 5000,
         isClosable: true,
         position: 'top-right',
       });
     } finally {
-      setLoading(false); // Set loading to false after submission
+      setLoading(false);
+      setIsConfirmOpen(false); // Ensure modal is closed
     }
-  }, [formData, isEnabled, onBack, toast]);
+  }, [formData, isEnabled, onBack, onSaveSuccess, toast]);
+
+  const handleConfirmSave = () => {
+    setIsConfirmOpen(true);
+  };
 
   const handleCancel = () => {
     onBack();
   };
 
   const handleMenuSelect = (value) => {
-    setFormData({ ...formData, databaseServer: value });
+    setFormData((prev) => ({ ...prev, databaseServer: value }));
     setActiveStep(1);
   };
 
@@ -236,25 +336,17 @@ const ConnectForm = ({ onBack }) => {
     'Review & Save',
   ];
 
-  const menuButtonRef = useRef(null);
-  const [menuWidth, setMenuWidth] = useState(null);
-
-  useEffect(() => {
-    if (menuButtonRef.current) {
-      setMenuWidth(menuButtonRef.current.getBoundingClientRect().width);
-    }
-
-    const updateMenuWidth = () => {
-      if (menuButtonRef.current) {
-        setMenuWidth(menuButtonRef.current.getBoundingClientRect().width);
-      }
-    };
-
-    window.addEventListener('resize', updateMenuWidth);
-    return () => {
-      window.removeEventListener('resize', updateMenuWidth);
-    };
-  }, [formData.databaseServer]);
+  const downloadSampleJson = () => {
+    const blob = new Blob([JSON.stringify(sampleJsonStructure, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'sample-bigquery-structure.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <Box width="70%" margin="auto" padding="6" pt={10} borderRadius="lg" boxShadow="xl" bg={boxBgColor} mt={5}>
@@ -273,7 +365,6 @@ const ConnectForm = ({ onBack }) => {
             <FormLabel>Select Database Server</FormLabel>
             <Menu>
               <MenuButton
-                ref={menuButtonRef}
                 as={Button}
                 size="lg"
                 width="100%"
@@ -289,7 +380,7 @@ const ConnectForm = ({ onBack }) => {
               >
                 {formData.databaseServer || 'Select database server'}
               </MenuButton>
-              <MenuList bg="white" width={menuWidth ? `${menuWidth}px` : 'auto'}>
+              <MenuList bg="white">
                 {databaseServers.map((server) => (
                   <MenuItem
                     key={server.value}
@@ -321,7 +412,7 @@ const ConnectForm = ({ onBack }) => {
                   placeholder="Enter username"
                   size="lg"
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
                 />
               </FormControl>
               <FormControl id="password" isRequired>
@@ -331,7 +422,7 @@ const ConnectForm = ({ onBack }) => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter password"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                   />
                   <InputRightElement width="4.5rem">
                     <Button h="1.75rem" size="sm" onClick={() => setShowPassword(!showPassword)}>
@@ -348,7 +439,7 @@ const ConnectForm = ({ onBack }) => {
                   placeholder="Enter account"
                   size="lg"
                   value={formData.account}
-                  onChange={(e) => setFormData({ ...formData, account: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, account: e.target.value }))}
                 />
               </FormControl>
               <FormControl id="warehouse" isRequired>
@@ -357,7 +448,7 @@ const ConnectForm = ({ onBack }) => {
                   placeholder="Enter warehouse"
                   size="lg"
                   value={formData.warehouse}
-                  onChange={(e) => setFormData({ ...formData, warehouse: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, warehouse: e.target.value }))}
                 />
               </FormControl>
             </HStack>
@@ -373,7 +464,7 @@ const ConnectForm = ({ onBack }) => {
                   placeholder="Enter role"
                   size="lg"
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
                 />
               </FormControl>
               <FormControl id="database" isRequired>
@@ -382,7 +473,7 @@ const ConnectForm = ({ onBack }) => {
                   placeholder="Enter database"
                   size="lg"
                   value={formData.database}
-                  onChange={(e) => setFormData({ ...formData, database: e.target.value })}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, database: e.target.value }))}
                 />
               </FormControl>
             </HStack>
@@ -391,6 +482,15 @@ const ConnectForm = ({ onBack }) => {
 
         {activeStep === 1 && formData.databaseServer === 'BigQuery' && (
           <VStack spacing={6} align="stretch">
+            <FormControl id="bigQueryDatabase" isRequired>
+              <FormLabel>Database</FormLabel>
+              <Input
+                placeholder="Enter BigQuery database"
+                size="lg"
+                value={formData.bigQueryDatabase}
+                onChange={(e) => setFormData((prev) => ({ ...prev, bigQueryDatabase: e.target.value }))}
+              />
+            </FormControl>
             <FormControl id="service-account-key" isRequired>
               <FormLabel mb={2}>
                 Service Account Key (JSON)
@@ -429,6 +529,9 @@ const ConnectForm = ({ onBack }) => {
                 <Text fontSize="sm" color="gray.500">
                   {selectedFile ? selectedFile.name : 'No file selected'}
                 </Text>
+                <Link color="blue.500" onClick={onOpen} display="flex" alignItems="center" mt={2}>
+                  <Icon as={InfoOutlineIcon} mr={1} /> View Sample JSON
+                </Link>
               </Box>
             </FormControl>
           </VStack>
@@ -454,6 +557,7 @@ const ConnectForm = ({ onBack }) => {
                 {formData.databaseServer === 'BigQuery' && (
                   <>
                     <Text>Project ID: {formData.projectId}</Text>
+                    <Text>Database: {formData.bigQueryDatabase}</Text>
                     <Text>Service Account Key: {formData.serviceAccountKey?.name}</Text>
                   </>
                 )}
@@ -483,12 +587,80 @@ const ConnectForm = ({ onBack }) => {
               {loading ? <Spinner size="sm" /> : 'Next'}
             </Button>
           ) : (
-            <Button colorScheme="blue" size="md" onClick={handleSave} isDisabled={loading}>
+            <Button colorScheme="blue" size="md" onClick={handleConfirmSave} isDisabled={loading}>
               {loading ? <Spinner size="sm" /> : 'Save'}
             </Button>
           )}
         </HStack>
       </VStack>
+
+      {/* Modal for Sample JSON Structure */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered size="lg">
+        <ModalOverlay />
+        <ModalContent borderRadius="md" boxShadow="2xl">
+          <ModalHeader fontSize="lg" fontWeight="bold" bg="blue.500" color="white" borderTopRadius="md" p={4}>
+            Sample JSON Structure for BigQuery
+          </ModalHeader>
+          <ModalCloseButton color="white" />
+          <ModalBody bg="gray.50" p={6}>
+            <Box bg="white" p={4} borderRadius="md" border="1px solid" borderColor="gray.200" overflowX="auto">
+              <Text as="pre" fontSize="sm" whiteSpace="pre-wrap">
+                {JSON.stringify(sampleJsonStructure, null, 2)}
+              </Text>
+            </Box>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" onClick={downloadSampleJson} mr={3}>
+              Download Sample JSON
+            </Button>
+            <Button onClick={onClose}>Close</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isConfirmOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={() => setIsConfirmOpen(false)}
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Confirm Save
+            </AlertDialogHeader>
+
+            <AlertDialogBody>
+              Creating a new configuration will save the current settings. Do you want to proceed?
+            </AlertDialogBody>
+
+            <AlertDialogFooter>
+              <Button
+                ref={cancelRef}
+                onClick={() => setIsConfirmOpen(false)}
+                bg="white"
+                border="1px solid"
+                borderColor="#32343A"
+                color="#32343A"
+                _hover={{ bg: '#f7f7f7' }}
+                _active={{ bg: '#e2e2e2' }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                ml={3}
+                bg="#32343A"
+                color="white"
+                _hover={{ bg: '#2b2d33' }}
+                _active={{ bg: '#232529' }}
+              >
+                Yes, Save
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 };
