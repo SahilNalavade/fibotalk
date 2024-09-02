@@ -53,8 +53,12 @@ import { useAuth } from '../auth';
 import SchemaPage from './SchemaPage';
 import EditForm from './EditForm';
 import SchemaLogs from './SchemaLogs';
+import { useLocation } from 'react-router-dom';
 
 const DatabasePagecopy = () => {
+  const location = useLocation();
+  const databaseInfo = location.state?.databaseInfo || {}; // Get database information
+  const schemaName = location.state?.schemaName || '';
   const { isSignedIn } = useAuth(); // Check if the user is signed in
   const tabBg = useColorModeValue('gray.100', 'gray.700');
   const navigate = useNavigate(); // Use the useNavigate hook for navigation
@@ -222,8 +226,9 @@ const DatabasePagecopy = () => {
   };
 
   // Function to handle row click and navigate to the /schema-page
-  const handleRowClick = () => {
-    navigate('/schema-page'); // Redirect to /schema-page
+const handleRowClick = (row) => {
+    const schemaName = row.fields['Schema Name']; // Capture the schema name
+    navigate('/schema-page', { state: { databaseInfo: row, schemaName } }); // Pass schema name along with database info
   };
 
   return (
@@ -252,16 +257,14 @@ const DatabasePagecopy = () => {
                 </BreadcrumbItem>
                 <BreadcrumbItem>
                   <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">
-                    Schema
+                  {databaseInfo.fields['Database']}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-                {showTableBreadcrumb && (
-                  <BreadcrumbItem>
-                    <BreadcrumbLink href="#" fontSize="lg">
-                      Table
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                )}
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">
+                  {databaseInfo.fields['Schema Name']}
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
               </Breadcrumb>
             </Box>
 
@@ -272,7 +275,7 @@ const DatabasePagecopy = () => {
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <SchemaPage />
+                <SchemaPage schemaName={schemaName} databaseInfo={databaseInfo} />
                 </TabPanel>
                 <TabPanel>
                   <SchemaLogs />

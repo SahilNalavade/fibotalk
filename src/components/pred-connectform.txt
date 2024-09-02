@@ -342,13 +342,9 @@ const handleSave = useCallback(async () => {
             'Database Server': 'SNOWFLAKE',
           });
         } else if (databaseServer === 'BigQuery') {
-          console.log('bq fetch started');
           await axios.post('/api/save-bq-schema', commonData);
-          console.log('bq schema started');
           await axios.post('http://localhost:5001/save-bq-tables', commonData);
-          console.log('bq table started');
           await axios.post('http://localhost:5002/save-bq-columns', commonData);
-          console.log('bq column started');
         }
       } catch (flaskError) {
         console.error('Error in Flask API calls:', flaskError);

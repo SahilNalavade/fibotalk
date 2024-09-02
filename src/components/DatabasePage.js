@@ -156,8 +156,9 @@ const fetchSchema = async () => {
 
   // Navigate to DatabasePage on row click
   const handleRowClick = (row) => {
-    navigate('/DatabasePagec', { state: { databaseInfo: row } });
-  };
+  const schemaName = row.fields['Schema Name']; // Capture the schema name
+  navigate('/DatabasePagec', { state: { databaseInfo: row, schemaName } }); // Pass schema name along with database info
+};
 
   // Modal handling functions
   const openModal = (index) => {
@@ -526,7 +527,7 @@ const fetchSchema = async () => {
                 </BreadcrumbItem>
                 <BreadcrumbItem>
                   <BreadcrumbLink fontSize="lg" fontWeight="semibold">
-                    Schema
+                  {databaseInfo.fields['Database']}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
               </Breadcrumb>

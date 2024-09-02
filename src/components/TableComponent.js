@@ -46,11 +46,11 @@ const TableComponent = () => {
         `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
         {
           headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`, // Replace with your actual Airtable API key
+            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
           },
         }
       );
-
+  
       const records = response.data.records.map((record) => {
         let logoUrl = '';
         if (record.fields['Database Server'] === 'BigQuery') {
@@ -60,7 +60,7 @@ const TableComponent = () => {
         } else {
           logoUrl = '/default_database.png';
         }
-
+  
         return {
           id: record.id,
           databaseName: record.fields['Database'] || 'Unnamed Database',
@@ -73,7 +73,7 @@ const TableComponent = () => {
           fields: record.fields,
         };
       });
-
+  
       const sortedRecords = records.sort((a, b) => b.dateModified - a.dateModified);
       setTableData(sortedRecords);
     } catch (error) {
@@ -82,6 +82,7 @@ const TableComponent = () => {
       setLoading(false);
     }
   }, []);
+  
 
   useEffect(() => {
     fetchData();

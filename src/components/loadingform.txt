@@ -182,61 +182,6 @@ const handleSave = useCallback(async () => {
 
   setLoading(true);
 
-  // If this database is being activated, deactivate other active databases
-  if (isEnabled) {
-    try {
-      // Fetch all databases to find active ones
-      const response = await axios.get(
-        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
-        {
-          headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const activeDatabases = response.data.records.filter(
-        (record) => record.fields.State === 'Active'
-      );
-
-      if (activeDatabases.length > 0) {
-        // Deactivate other active databases
-        const deactivateRequests = activeDatabases.map((record) =>
-          axios.patch(
-            `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
-            {
-              records: [
-                {
-                  id: record.id,
-                  fields: { State: 'Inactive' },
-                },
-              ],
-            },
-            {
-              headers: {
-                Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
-                'Content-Type': 'application/json',
-              },
-            }
-          )
-        );
-
-        await Promise.all(deactivateRequests);
-      }
-    } catch (error) {
-      console.error('Error deactivating other databases:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to deactivate other active databases.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-        position: 'top-right',
-      });
-    }
-  }
-
   const commonData = {
     'Organisation ID': new Date().getTime().toString(),
     'Database Server': databaseServer,
@@ -255,7 +200,7 @@ const handleSave = useCallback(async () => {
         Account: account,
         Warehouse: warehouse,
         Role: role,
-        'Project ID': database,
+        Database: database,
       }),
       ...(databaseServer === 'BigQuery' && {
         'Project ID': projectId,
@@ -275,7 +220,7 @@ const handleSave = useCallback(async () => {
   };
 
   try {
-    // Save the new or edited configuration to Airtable
+    // Send data to Airtable
     const airtableResponse = await axios.post(
       `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
       airtableData,
@@ -297,11 +242,11 @@ const handleSave = useCallback(async () => {
         position: 'top-right',
       });
 
-      // Trigger the callback to refresh the data in TableComponent
+      // Immediately switch view after Airtable save
       if (onSaveSuccess) {
         onSaveSuccess();
       }
-      onBack();
+      
     }
 
     // Schedule Flask API calls to run in the background
@@ -312,7 +257,7 @@ const handleSave = useCallback(async () => {
             Username: username,
             Password: password,
             Account: account,
-            'Project ID': projectId,
+            Database: database,
             Warehouse: warehouse,
             Role: role,
             'Organisation ID': commonData['Organisation ID'],
@@ -330,6 +275,7 @@ const handleSave = useCallback(async () => {
             'Organisation ID': commonData['Organisation ID'],
             'Database Server': 'SNOWFLAKE',
           });
+          onBack();
 
           await axios.post('http://localhost:5005/save-column-schema', {
             Username: username,
@@ -342,18 +288,15 @@ const handleSave = useCallback(async () => {
             'Database Server': 'SNOWFLAKE',
           });
         } else if (databaseServer === 'BigQuery') {
-          console.log('bq fetch started');
           await axios.post('/api/save-bq-schema', commonData);
-          console.log('bq schema started');
           await axios.post('http://localhost:5001/save-bq-tables', commonData);
-          console.log('bq table started');
           await axios.post('http://localhost:5002/save-bq-columns', commonData);
-          console.log('bq column started');
         }
       } catch (flaskError) {
         console.error('Error in Flask API calls:', flaskError);
         toast({
           title: 'Flask Error',
+          // Ensure the error message is a string
           description: flaskError?.message || JSON.stringify(flaskError),
           status: 'error',
           duration: 5000,
@@ -367,6 +310,7 @@ const handleSave = useCallback(async () => {
     console.error('Error saving data:', error);
     toast({
       title: 'Error',
+      // Corrected: Ensure the error message is a string, not an object
       description: error?.message || JSON.stringify(error),
       status: 'error',
       duration: 5000,
@@ -375,10 +319,9 @@ const handleSave = useCallback(async () => {
     });
   } finally {
     setLoading(false);
-    setIsConfirmOpen(false);
+    setIsConfirmOpen(false); // Ensure modal is closed
   }
 }, [formData, isEnabled, onBack, onSaveSuccess, toast]);
-
 
   
   const handleConfirmSave = () => {
@@ -463,17 +406,7 @@ const handleSave = useCallback(async () => {
         )}
 
         {activeStep === 1 && formData.databaseServer === 'SnowFlake' && (
-          
           <VStack spacing={6} align="stretch">
-            <FormControl id="database" isRequired>
-                <FormLabel>Connection Name</FormLabel>
-                <Input
-                  placeholder="Enter database label"
-                  size="lg"
-                  value={formData.database}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, database: e.target.value }))}
-                />
-              </FormControl>
             <HStack spacing={6}>
               <FormControl id="username" isRequired>
                 <FormLabel>
@@ -541,16 +474,15 @@ const handleSave = useCallback(async () => {
                   onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
                 />
               </FormControl>
-              <FormControl id="projectId" isRequired>
+              <FormControl id="database" isRequired>
                 <FormLabel>Database</FormLabel>
                 <Input
                   placeholder="Enter database"
                   size="lg"
-                  value={formData.projectId}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, projectId: e.target.value }))}
+                  value={formData.database}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, database: e.target.value }))}
                 />
               </FormControl>
-
             </HStack>
           </VStack>
         )}
@@ -558,9 +490,9 @@ const handleSave = useCallback(async () => {
         {activeStep === 1 && formData.databaseServer === 'BigQuery' && (
           <VStack spacing={6} align="stretch">
             <FormControl id="bigQueryDatabase" isRequired>
-              <FormLabel>Connection Name</FormLabel>
+              <FormLabel>Database</FormLabel>
               <Input
-                placeholder="Enter BigQuery database label"
+                placeholder="Enter BigQuery database"
                 size="lg"
                 value={formData.bigQueryDatabase}
                 onChange={(e) => setFormData((prev) => ({ ...prev, bigQueryDatabase: e.target.value }))}
@@ -568,7 +500,7 @@ const handleSave = useCallback(async () => {
             </FormControl>
             <FormControl id="service-account-key" isRequired>
               <FormLabel mb={2}>
-                Your BigQuery Service Account Key (JSON)
+                Service Account Key (JSON)
                 <Tooltip label="Upload your BigQuery service account key in JSON format" fontSize="sm">
                   <InfoOutlineIcon ml={2} boxSize={3} />
                 </Tooltip>

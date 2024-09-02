@@ -68,7 +68,7 @@ const EditAPI = ({ onBack, onDelete, initialData, addNewApiKey }) => {
       const AIRTABLE_PAT =
         'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
       const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
-      const AIRTABLE_TABLE_NAME = 'trial';
+      const AIRTABLE_TABLE_NAME = 'Apilist';
 
       // Fetch the record ID of the current API key
       const response = await axios.get(
@@ -183,7 +183,7 @@ const EditAPI = ({ onBack, onDelete, initialData, addNewApiKey }) => {
       const AIRTABLE_PAT =
         'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
       const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
-      const AIRTABLE_TABLE_NAME = 'trial';
+      const AIRTABLE_TABLE_NAME = 'Apilist';
 
       // Find the record ID based on Organisation ID
       const response = await axios.get(

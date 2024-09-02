@@ -38,22 +38,14 @@ import { ChevronDownIcon, SearchIcon, RepeatIcon, DeleteIcon } from '@chakra-ui/
 import { FaSortAlphaDown, FaSortAlphaUpAlt, FaMagic } from 'react-icons/fa';
 import { FiRotateCcw } from 'react-icons/fi';
 
-const SchemaPage = ({ schemaName, databaseInfo }) => {
-  const [tableData, setTableData] = useState([]);
-  const toast = useToast();
-  const [selectedTable, setSelectedTable] = useState(null);
-
-  useEffect(() => {
-    if (schemaName && databaseInfo?.fields?.['Database']) {
-      console.log(`Schema Name: ${schemaName}`);
-      console.log(`Database: ${databaseInfo.fields['Database']}`);
-      fetchTableData(schemaName, databaseInfo.fields['Database']);
-    }
-  }, [schemaName, databaseInfo]);
-
+const SchemaPage = () => {
+  const [schemaData, setSchemaData] = useState([]); // State for schemas
+  const [selectedSchema, setSelectedSchema] = useState(null); // State to track selected schema
+  const [selectedTable, setSelectedTable] = useState(null); // State to track selected table
   const [searchText, setSearchText] = useState('');
   const [descriptionSearchText, setDescriptionSearchText] = useState('');
   const [columnDescriptionSearchText, setColumnDescriptionSearchText] = useState('');
+  const [tableData, setTableData] = useState([]);
   const [columnsData, setColumnsData] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentDescription, setCurrentDescription] = useState('');
@@ -70,18 +62,51 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
   const [statusColumnSortOrder, setStatusColumnSortOrder] = useState(null);
   const [columnSearchText, setColumnSearchText] = useState(''); // State for columns search text
   const inputRef = useRef();
+  const toast = useToast();
 
-  const fetchTableData = async (schemaName, database) => {
+  // Fetch schemas data
+  const fetchSchemaData = async () => {
     try {
-      const filterFormula = `AND({Schema Name} = "${schemaName}", {Database} = "${database}")`;
       const response = await axios.get(
-        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaTable',
+        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaOverview', // Updated endpoint for schema data
         {
           headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`, // Replace with your actual API key
+            Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
+          },
+        }
+      );
+
+      const records = response.data.records.map((record) => ({
+        id: record.id,
+        schemaName: record.fields['Schema Name'] || 'No Schema Name',
+        description: record.fields['Description'] || 'No Description',
+        status: record.fields['Status'] || 'unknown',
+      }));
+
+      setSchemaData(records);
+    } catch (error) {
+      toast({
+        title: 'Error fetching schema data',
+        description: 'Failed to retrieve schema data from Airtable.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      console.error('Error fetching schema data from Airtable:', error);
+    }
+  };
+
+  // Fetch table data when a schema is selected
+  const fetchTableData = async (schemaName) => {
+    try {
+      const response = await axios.get(
+        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaTable', // Updated endpoint for table data
+        {
+          headers: {
+            Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
           },
           params: {
-            filterByFormula: filterFormula, // Use the combined filter formula
+            filterByFormula: `{Schema Name} = "${schemaName}"`,
           },
         }
       );
@@ -95,6 +120,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
       }));
 
       setTableData(records);
+      setColumnsData([]); // Clear columns when new tables are fetched
     } catch (error) {
       toast({
         title: 'Error fetching table data',
@@ -107,22 +133,17 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
     }
   };
 
-  useEffect(() => {
-    fetchTableData();
-  }, []);
-
-  const fetchColumnsData = async (schemaName, database, tableName) => {
+  // Fetch columns data for a selected table
+  const fetchColumnsData = async (tableName) => {
     try {
-      console.log(`Fetching columns for Table Name: ${tableName}`); // Log the table name
-      const filterFormula = `AND({Schema Name} = "${schemaName}", {Database} = "${database}", {Table Name} = "${tableName}")`;
       const response = await axios.get(
         'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaColumn', // Updated endpoint for column data
         {
           headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
           },
           params: {
-            filterByFormula: filterFormula, // Use the combined filter formula
+            filterByFormula: `{Table Name} = "${tableName}"`,
           },
         }
       );
@@ -147,10 +168,20 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
     }
   };
 
+  useEffect(() => {
+    fetchSchemaData();
+  }, []);
+
+  const handleSchemaSelect = (index) => {
+    setSelectedSchema(index);
+    const selectedSchemaName = schemaData[index]?.schemaName;
+    fetchTableData(selectedSchemaName);
+  };
+
   const handleTableSelect = (index) => {
     setSelectedTable(index);
     const selectedTableName = tableData[index]?.databaseName;
-    fetchColumnsData(schemaName, databaseInfo.fields['Database'], selectedTableName);
+    fetchColumnsData(selectedTableName);
   };
 
   const handleSearchChange = (e) => {
@@ -170,7 +201,8 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
   };
 
   const handleRefreshAll = () => {
-    fetchTableData();
+    fetchSchemaData();
+    setTableData([]);
     setColumnsData([]);
   };
 
@@ -210,10 +242,9 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           },
           {
             headers: {
-              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+              Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
             },
           }
-          
         );
       } else {
         const updatedColumnsData = [...columnsData];
@@ -230,7 +261,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           },
           {
             headers: {
-              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+              Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
             },
           }
         );
@@ -332,7 +363,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           },
           {
             headers: {
-              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+              Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
             },
           }
         );
@@ -354,7 +385,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           },
           {
             headers: {
-              Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+              Authorization: `Bearer YOUR_AIRTABLE_API_KEY`,
             },
           }
         );
@@ -440,8 +471,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           align={'left'}
           fontFamily="Arial, sans-serif"
         >
-          This is the schema for the database. Selecting a table will show its
-          columns.
+          This is the schema for the database. Selecting a table will show its columns.
         </Text>
         <Flex justifyContent="flex-end" mb={4}>
           <HStack justify="flex-end" mb={4}>
@@ -475,15 +505,15 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           </Tooltip>
         </Flex>
 
-    
+        <Flex>
           <TableContainer
             boxShadow="lg"
             borderRadius="lg"
             flex="1"
             mr={4}
-            height="200px"
+            height="400px"
             overflowY="auto"
-   
+            width="10px"
           >
             <Table variant="simple" size="md">
               <Thead bg="gray.100" position="sticky" top="0" zIndex="1">
@@ -668,11 +698,10 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
 
           {selectedTable !== null && (
             <TableContainer
-              mt={'50px'}
               boxShadow="lg"
               borderRadius="lg"
               flex="1"
-              height="200px"
+              height="400px"
               overflowY="auto"
             >
               <Table variant="simple" size="md">
@@ -848,7 +877,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
               </Table>
             </TableContainer>
           )}
-  
+        </Flex>
 
         <Modal isOpen={isModalOpen} onClose={closeModal}>
           <ModalOverlay />
