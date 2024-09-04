@@ -17,7 +17,7 @@ const SchemaLogs = () => {
 
   const fetchLogsData = async () => {
     try {
-      const response = await axios.get('https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/NewSchemaColumn', {
+      const response = await axios.get('https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaColumn', {
         headers: {
           Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
         },

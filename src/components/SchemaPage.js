@@ -74,6 +74,10 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
   const fetchTableData = async (schemaName, database) => {
     try {
       const filterFormula = `AND({Schema Name} = "${schemaName}", {Database} = "${database}")`;
+  
+      // Wait for a specified time (e.g., 1000 milliseconds or 1 second)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+  
       const response = await axios.get(
         'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/BQNewSchemaTable',
         {
@@ -85,6 +89,7 @@ const SchemaPage = ({ schemaName, databaseInfo }) => {
           },
         }
       );
+  
 
       const records = response.data.records.map((record) => ({
         id: record.id,

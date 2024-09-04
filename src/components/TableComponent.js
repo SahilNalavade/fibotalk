@@ -43,14 +43,14 @@ const TableComponent = () => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig`,
+        'https://api.airtable.com/v0/app4ZQ9jav2XzNIv9/DatabaseConfig',
         {
           headers: {
-            Authorization: `Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89`,
+            Authorization: 'Bearer pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89',
           },
         }
       );
-  
+
       const records = response.data.records.map((record) => {
         let logoUrl = '';
         if (record.fields['Database Server'] === 'BigQuery') {
@@ -60,7 +60,7 @@ const TableComponent = () => {
         } else {
           logoUrl = '/default_database.png';
         }
-  
+
         return {
           id: record.id,
           databaseName: record.fields['Database'] || 'Unnamed Database',
@@ -73,7 +73,7 @@ const TableComponent = () => {
           fields: record.fields,
         };
       });
-  
+
       const sortedRecords = records.sort((a, b) => b.dateModified - a.dateModified);
       setTableData(sortedRecords);
     } catch (error) {
@@ -82,7 +82,6 @@ const TableComponent = () => {
       setLoading(false);
     }
   }, []);
-  
 
   useEffect(() => {
     fetchData();
@@ -96,7 +95,6 @@ const TableComponent = () => {
     setShowForm(false);
   };
 
-  // Update this function to call fetchData after saving
   const handleSaveDatabase = useCallback(
     (newDatabase) => {
       fetchData(); // Refresh the data after saving
@@ -110,17 +108,54 @@ const TableComponent = () => {
     navigate('/DatabasePage', { state: { databaseInfo: row } });
   };
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
-  };
-
   const filteredData = tableData.filter((row) =>
     row.databaseName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+  const paginatedData = filteredData.slice(startIndex, endIndex);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  // Separate Pagination component
+  const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    const pageNumbers = [];
+    for (let i = 1; i <= totalPages; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <ButtonGroup variant="outline" spacing="2">
+        <Button
+          leftIcon={<FaChevronLeft />}
+          onClick={() => onPageChange(currentPage - 1)}
+          isDisabled={currentPage === 1}
+        >
+          Previous
+        </Button>
+        {pageNumbers.map((number) => (
+          <Button
+            key={number}
+            onClick={() => onPageChange(number)}
+            colorScheme={currentPage === number ? 'blue' : 'gray'}
+          >
+            {number}
+          </Button>
+        ))}
+        <Button
+          rightIcon={<FaChevronRight />}
+          onClick={() => onPageChange(currentPage + 1)}
+          isDisabled={currentPage === totalPages}
+        >
+          Next
+        </Button>
+      </ButtonGroup>
+    );
+  };
 
   return (
     <Box boxShadow="lg" borderRadius="lg" p={4}>
@@ -202,31 +237,15 @@ const TableComponent = () => {
                   </Tbody>
                 </Table>
               </TableContainer>
-              <Flex justifyContent="center" alignItems="center" mt={6}>
-                <ButtonGroup variant="outline" spacing={2}>
-                  <IconButton
-                    icon={<FaChevronLeft />}
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    isDisabled={currentPage === 1}
-                    aria-label="Previous Page"
-                  />
-                  {[...Array(totalPages).keys()].map((page) => (
-                    <Button
-                      key={page + 1}
-                      onClick={() => handlePageChange(page + 1)}
-                      variant={currentPage === page + 1 ? 'solid' : 'outline'}
-                      colorScheme={currentPage === page + 1 ? 'blue' : 'gray'}
-                    >
-                      {page + 1}
-                    </Button>
-                  ))}
-                  <IconButton
-                    icon={<FaChevronRight />}
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    isDisabled={currentPage === totalPages}
-                    aria-label="Next Page"
-                  />
-                </ButtonGroup>
+              <Flex justifyContent="space-between" alignItems="center" mt={6}>
+                <Text fontSize="sm" color="gray.600">
+                  Showing {startIndex + 1}-{endIndex} of {filteredData.length} results
+                </Text>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
               </Flex>
             </>
           )}

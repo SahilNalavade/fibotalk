@@ -121,6 +121,10 @@ const DatabasePagecopy = () => {
     setSelectedRowIndex(null);
     setCurrentDescription('');
   };
+  const handleBackClick = () => {
+    // Navigate back with the previous state intact
+    navigate(-1); // This will take you back to the previous page, keeping the state
+  };
 
   // Function to handle saving the description
   const saveDescription = () => {
@@ -246,22 +250,22 @@ const handleRowClick = (row) => {
                 color={breadcrumbColor}
               >
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/connections/database" fontSize="lg">
+                  <BreadcrumbLink href="/connections" fontSize="lg">
                     Connection
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/connections/database" fontSize="lg">
+                  <BreadcrumbLink href="/connections" fontSize="lg">
                     Database Configuration
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">
+                  <BreadcrumbLink onClick={handleBackClick} fontSize="lg" fontWeight="semibold">
                   {databaseInfo.fields['Database']}
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="DatabasePage" fontSize="lg" fontWeight="semibold">
+                  <BreadcrumbLink fontSize="lg" fontWeight="semibold">
                   {databaseInfo.fields['Schema Name']}
                   </BreadcrumbLink>
                 </BreadcrumbItem>

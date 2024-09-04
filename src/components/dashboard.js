@@ -1,5 +1,5 @@
 // Dashboard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import TopNav from './TopNav';
 import SideNav from './SideNav';
@@ -26,16 +26,32 @@ const Dashboard = () => {
   const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [activeTabIndex, setActiveTabIndex] = useState(0);
-  const [apiKeys, setApiKeys] = useState([]); // State to hold API keys
+  const [apiKeys, setApiKeys] = useState([]);
+
+  // Load the active tab index from local storage on component mount
+  useEffect(() => {
+    const savedTabIndex = localStorage.getItem('activeTabIndex');
+    if (savedTabIndex !== null) {
+      setActiveTabIndex(Number(savedTabIndex));
+    }
+  }, []);
+
+  // Save the active tab index to local storage when it changes
+  const handleTabChange = (index) => {
+    setActiveTabIndex(index);
+    localStorage.setItem('activeTabIndex', index);
+  };
 
   const handleAddDatabase = () => {
     setShowConnectForm(true);
     setActiveTabIndex(1); // Switch to the Database Configuration tab
+    localStorage.setItem('activeTabIndex', 1);
   };
 
   const handleBackToDatabaseConfig = () => {
     setShowConnectForm(false);
     setActiveTabIndex(0); // Switch to the API Key tab
+    localStorage.setItem('activeTabIndex', 0);
   };
 
   const handleSaveAPIKey = (apiKeyData) => {
@@ -84,7 +100,7 @@ const Dashboard = () => {
                 </Breadcrumb>
               </Box>
 
-              <Tabs index={activeTabIndex} onChange={(index) => setActiveTabIndex(index)}>
+              <Tabs index={activeTabIndex} onChange={handleTabChange}>
                 <TabList mb="1em">
                   <Tab>API Key</Tab>
                   <Tab>Database Configuration</Tab>

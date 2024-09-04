@@ -535,56 +535,6 @@ const ResultBox = ({ sql, data, chart }) => {
   );
 };
 
-
-// Airtable integration function
-const sendToAirtable = async (data) => {
-  const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
-  const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
-  const AIRTABLE_TABLE_NAME = 'PseudoCode';
-
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
-
-  try {
-    // Prepare the body with correct field names and ensure correct data types
-    const body = {
-      fields: {
-        "Organisation ID": String(data.organisationId || '').trim(),  // Ensure this is a string
-        "Report ID": String(data.reportId || '').trim(),               // Ensure this is a string
-        "User ID": String(data.userId || '').trim(),                  // Ensure this is a string
-        "Conversation ID": String(data.conversationId || '').trim(),  // Convert to string if necessary
-        "Message Query": String(data.messageQuery || '').trim(),      // Ensure this is a string
-        "Message User Type": String(data.messageUserType || '').trim(), // Ensure this is a string
-        "PseudoCode": String(data.pseudocode || '').trim(),           // Ensure this is a string
-        "CreatedAt": new Date().toISOString(),                       // Format date correctly
-        "UpdatedAt": new Date().toISOString(),
-        "Verification Status": "Pending", // Set a default status
-      },
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_PAT}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    // Check for successful response
-    if (!response.ok) {
-      const errorDetail = await response.json(); // Get the error details from Airtable
-      console.error('Airtable Response:', errorDetail);
-      throw new Error(`Airtable Error: ${errorDetail.error.message}`);
-    }
-
-    const result = await response.json();
-    console.log('Airtable Record Created:', result);
-  } catch (error) {
-    console.error('Error sending data to Airtable:', error);
-  }
-};
-
-
 // Main ChatPage component
 const ChatPage = () => {
   const { isSignedIn } = useAuth();
@@ -684,17 +634,6 @@ const ChatPage = () => {
 
         // Show the confirmation prompt only after pseudocode is displayed
         setIsWaitingForConfirmation(true);
-
-        // Send data to Airtable
-        sendToAirtable({
-          organisationId: 'ORG123',
-          reportId: 'RPT456',
-          userId: 'test@gmail.com',
-          conversationId: conversationCount + 1,
-          messageQuery: inputValue,
-          messageUserType: 'User',
-          pseudocode: data.pseudocode,
-        });
       })
       .catch((error) => {
         console.error('Error:', error);
@@ -886,3 +825,4 @@ const ChatPage = () => {
 };
 
 export default ChatPage;
+

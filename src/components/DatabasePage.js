@@ -104,6 +104,7 @@ const AnotherPage = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
 
   useEffect(() => {
+    
     if (!databaseInfo.fields) {
       toast({
         title: 'No database information found.',
@@ -546,9 +547,9 @@ const fetchSchema = async () => {
                   <TableContainer boxShadow="lg" borderRadius="lg">
                     <Flex justifyContent="flex-end" mb={4}>
                       <HStack spacing={4}>
-                        <Button colorScheme="blue" onClick={generateAIDescriptionForAll}>
+                        {/* <Button colorScheme="blue" onClick={generateAIDescriptionForAll}>
                           AI Description for All
-                        </Button>
+                        </Button> */}
                         <Button colorScheme="blue" mr={4} onClick={handleRefreshAll}>
                           Refresh All
                         </Button>

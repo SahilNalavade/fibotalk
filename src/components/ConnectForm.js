@@ -9,6 +9,8 @@ import {
   Button,
   VStack,
   HStack,
+  ListItem,
+  UnorderedList,
   Box,
   Menu,
   MenuButton,
@@ -343,6 +345,7 @@ const handleSave = useCallback(async () => {
           });
         } else if (databaseServer === 'BigQuery') {
           console.log('bq fetch started');
+          
           await axios.post('/api/save-bq-schema', commonData);
           console.log('bq schema started');
           await axios.post('http://localhost:5001/save-bq-tables', commonData);
@@ -555,62 +558,81 @@ const handleSave = useCallback(async () => {
           </VStack>
         )}
 
-        {activeStep === 1 && formData.databaseServer === 'BigQuery' && (
-          <VStack spacing={6} align="stretch">
-            <FormControl id="bigQueryDatabase" isRequired>
-              <FormLabel>Connection Name</FormLabel>
-              <Input
-                placeholder="Enter BigQuery database label"
-                size="lg"
-                value={formData.bigQueryDatabase}
-                onChange={(e) => setFormData((prev) => ({ ...prev, bigQueryDatabase: e.target.value }))}
-              />
-            </FormControl>
-            <FormControl id="service-account-key" isRequired>
-              <FormLabel mb={2}>
-                Your BigQuery Service Account Key (JSON)
-                <Tooltip label="Upload your BigQuery service account key in JSON format" fontSize="sm">
-                  <InfoOutlineIcon ml={2} boxSize={3} />
-                </Tooltip>
-              </FormLabel>
-              <Box
-                borderWidth={2}
-                borderRadius="md"
-                borderStyle="dashed"
-                borderColor="gray.300"
-                p={4}
-                textAlign="center"
-                transition="all 0.3s"
-                _hover={{ borderColor: 'blue.500' }}
-              >
-                <Input
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  display="none"
-                  id="service-account-key-upload"
-                />
-                <Button
-                  as="label"
-                  htmlFor="service-account-key-upload"
-                  variant="ghost"
-                  colorScheme="blue"
-                  size="md"
-                  leftIcon={<Icon as={FiUpload} />}
-                  mb={2}
-                >
-                  {selectedFile ? 'Change File' : 'Select JSON File'}
-                </Button>
-                <Text fontSize="sm" color="gray.500">
-                  {selectedFile ? selectedFile.name : 'No file selected'}
-                </Text>
-                <Link color="blue.500" onClick={onOpen} display="flex" alignItems="center" mt={2}>
-                  <Icon as={InfoOutlineIcon} mr={1} /> View Sample JSON
-                </Link>
-              </Box>
-            </FormControl>
-          </VStack>
-        )}
+{activeStep === 1 && formData.databaseServer === 'BigQuery' && (
+  <VStack spacing={6} align="stretch">
+    <FormControl id="bigQueryDatabase" isRequired>
+      <FormLabel>Connection Name</FormLabel>
+      <Input
+        placeholder="Enter BigQuery database label"
+        size="lg"
+        value={formData.bigQueryDatabase}
+        onChange={(e) => setFormData((prev) => ({ ...prev, bigQueryDatabase: e.target.value }))}
+      />
+    </FormControl>
+    <FormControl id="service-account-key" isRequired>
+      <FormLabel mb={2}>
+        Your BigQuery Service Account Key (JSON)
+        <Tooltip label="Upload your BigQuery service account key in JSON format" fontSize="sm">
+          <InfoOutlineIcon ml={2} boxSize={3} />
+        </Tooltip>
+      </FormLabel>
+      <Box
+        borderWidth={2}
+        borderRadius="md"
+        borderStyle="dashed"
+        borderColor="gray.300"
+        p={4}
+        textAlign="center"
+        transition="all 0.3s"
+        _hover={{ borderColor: 'blue.500' }}
+      >
+        <Input
+          type="file"
+          accept=".json"
+          onChange={handleFileChange}
+          display="none"
+          id="service-account-key-upload"
+        />
+        <Button
+          as="label"
+          htmlFor="service-account-key-upload"
+          variant="ghost"
+          colorScheme="blue"
+          size="md"
+          leftIcon={<Icon as={FiUpload} />}
+          mb={2}
+        >
+          {selectedFile ? 'Change File' : 'Select JSON File'}
+        </Button>
+        <Text fontSize="sm" color="gray.500">
+          {selectedFile ? selectedFile.name : 'No file selected'}
+        </Text>
+        <Link color="blue.500" onClick={onOpen} display="flex" alignItems="center" mt={2}>
+          <Icon as={InfoOutlineIcon} mr={1} /> View Sample JSON
+        </Link>
+      </Box>
+    </FormControl>
+
+    {/* New Help Section for Required Roles */}
+    <Box bg="gray.100" p={4} borderRadius="md" border="1px solid" borderColor="gray.200" mt={4}>
+      <Text fontSize="sm" fontWeight="bold" mb={2}>
+        Required Roles for BigQuery:
+      </Text>
+      <Text fontSize="sm">
+        This service account needs at least the following roles to run BigQuery queries:
+      </Text>
+      <UnorderedList mt={2} fontSize="sm">
+        <ListItem>
+          <strong>BigQuery Job User (roles/bigquery.jobUser)</strong>: Allows the creation of jobs, such as running queries.
+        </ListItem>
+        <ListItem>
+          <strong>BigQuery Data Viewer (roles/bigquery.dataViewer)</strong>: Allows read access to datasets.
+        </ListItem>
+      </UnorderedList>
+    </Box>
+  </VStack>
+)}
+
 
         {activeStep === 2 && (
           <Box>

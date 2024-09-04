@@ -3,9 +3,11 @@ import { Box, Button, VStack, Flex, Text, Tooltip } from '@chakra-ui/react';
 import { ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
 import { FaHome, FaArchive, FaStar, FaPlusSquare, FaHistory, FaDatabase, FaUser, FaUserCog, FaSignOutAlt, FaShieldAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { useClerk } from '@clerk/clerk-react'; // Import useClerk
 
 const SideNav = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const { signOut } = useClerk(); // Destructure signOut from useClerk
 
   const toggleNav = () => {
     setIsOpen(!isOpen);
@@ -80,18 +82,18 @@ const SideNav = () => {
         <Box mt="auto" mb={4} p={4}>
           <Tooltip label="Logout" placement="right" isDisabled={isOpen}>
             <Flex justifyContent={isOpen ? 'flex-end' : 'center'}>
-              <Button 
-                leftIcon={<FaSignOutAlt />} 
-                variant="ghost" 
+              <Button
+                leftIcon={<FaSignOutAlt />}
+                variant="ghost"
                 justifyContent="center"
-                w={isOpen ? 'auto' : '100%'} // Adjust width based on open/closed state
+                w={isOpen ? 'auto' : '100%'}
                 size="sm"
                 color="gray.700"
                 _hover={{ bg: isOpen ? '#E6EAF3' : 'transparent' }}
                 _active={{ bg: isOpen ? '#E6EAF3' : 'transparent' }}
+                onClick={signOut} // Call signOut on click
               >
-                {isOpen && 
-                <Text ml={2}>Logout</Text>}
+                {isOpen && <Text ml={2}>Logout</Text>}
               </Button>
             </Flex>
           </Tooltip>
