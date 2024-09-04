@@ -89,6 +89,7 @@ import TopNav from './TopNav';
 import SideNav from './SideNav';
 import { useAuth } from '../auth';
 import { UserButton } from '@clerk/clerk-react';
+import ErrorBoundary from './ErrorBoundry';
 
 // Component to display chat messages
 const ChatMessage = ({ message, isUser, onEdit }) => {
@@ -255,6 +256,7 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
 };
 
 // ResultBox component
+// ResultBox component with defensive checks
 const ResultBox = ({ sql, data, chart }) => {
   const { hasCopied, onCopy } = useClipboard(sql);
   const [chartType, setChartType] = useState('bar');
@@ -265,6 +267,11 @@ const ResultBox = ({ sql, data, chart }) => {
   const [description, setDescription] = useState('');
 
   const downloadCSV = () => {
+    if (!data || data.length === 0) {
+      console.error('No data available to download.');
+      return;
+    }
+
     const headers = Object.keys(data[0]).join(',');
     const rows = data.map((row) => Object.values(row).join(',')).join('\n');
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${rows}`;
@@ -278,6 +285,10 @@ const ResultBox = ({ sql, data, chart }) => {
   };
 
   const getChartComponent = () => {
+    if (!data || data.length === 0) {
+      return <Text>No data available for the chart.</Text>;
+    }
+
     switch (chartType) {
       case 'line':
         return (
@@ -296,7 +307,16 @@ const ResultBox = ({ sql, data, chart }) => {
         return (
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie data={data} dataKey="deliciousness" nameKey="name" cx="50%" cy="50%" outerRadius={80} fill="#8884d8" label>
+              <Pie
+                data={data}
+                dataKey="deliciousness"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                fill="#8884d8"
+                label
+              >
                 {data.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={chart.colors[index % chart.colors.length]} />
                 ))}
@@ -384,33 +404,43 @@ const ResultBox = ({ sql, data, chart }) => {
                 Download CSV
               </Button>
             </Flex>
-            <Table variant="simple" w="full">
-              <Thead>
-                <Tr>
-                  {Object.keys(data[0]).map((key) => (
-                    <Th key={key}>{key}</Th>
-                  ))}
-                </Tr>
-              </Thead>
-              <Tbody>
-                {data.map((row, index) => (
-                  <Tr key={index}>
-                    {Object.values(row).map((value, i) => (
-                      <Td key={i}>{value}</Td>
+            {data && data.length > 0 ? (
+              <Table variant="simple" w="full">
+                <Thead>
+                  <Tr>
+                    {Object.keys(data[0]).map((key) => (
+                      <Th key={key}>{key}</Th>
                     ))}
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
+                </Thead>
+                <Tbody>
+                  {data.map((row, index) => (
+                    <Tr key={index}>
+                      {Object.values(row).map((value, i) => (
+                        <Td key={i}>{value}</Td>
+                      ))}
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            ) : (
+              <Text>No data available to display.</Text>
+            )}
           </TabPanel>
           <TabPanel>
             <Box>
               <Flex justifyContent="end" alignItems="center" mb={4}>
                 <HStack spacing={2}>
                   <IconButton icon={<RepeatIcon />} onClick={() => setChartSize(1)} />
-                  <IconButton icon={<DownloadIcon />} onClick={() => alert('Download chart functionality to be implemented')} />
+                  <IconButton
+                    icon={<DownloadIcon />}
+                    onClick={() => alert('Download chart functionality to be implemented')}
+                  />
                   <IconButton icon={<AddIcon />} onClick={() => setChartSize((prev) => prev + 0.2)} />
-                  <IconButton icon={<MinusIcon />} onClick={() => setChartSize((prev) => (prev > 0.4 ? prev - 0.2 : prev))} />
+                  <IconButton
+                    icon={<MinusIcon />}
+                    onClick={() => setChartSize((prev) => (prev > 0.4 ? prev - 0.2 : prev))}
+                  />
                   <IconButton icon={<FaExpand />} onClick={openModal} />
                   <Menu>
                     <MenuButton as={Button}>
@@ -470,7 +500,11 @@ const ResultBox = ({ sql, data, chart }) => {
 
             <FormControl id="description" mt={4}>
               <FormLabel>Description</FormLabel>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Enter a description" />
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter a description"
+              />
             </FormControl>
 
             <Tabs mt={4}>
@@ -483,7 +517,17 @@ const ResultBox = ({ sql, data, chart }) => {
                 <TabPanel>
                   <Box position="relative" bg={'black'} color={'white'} p={5} fontSize={14}>
                     <pre>{sql}</pre>
-                    <IconButton icon={<CopyIcon />} position="absolute" top={2} right={2} onClick={onCopy} color={'white'} bg={'transparent'} _active={'transparent'} _hover={'transparent'} />
+                    <IconButton
+                      icon={<CopyIcon />}
+                      position="absolute"
+                      top={2}
+                      right={2}
+                      onClick={onCopy}
+                      color={'white'}
+                      bg={'transparent'}
+                      _active={'transparent'}
+                      _hover={'transparent'}
+                    />
                   </Box>
                 </TabPanel>
                 <TabPanel>
@@ -495,24 +539,28 @@ const ResultBox = ({ sql, data, chart }) => {
                       Download CSV
                     </Button>
                   </Flex>
-                  <Table variant="simple" w="full">
-                    <Thead>
-                      <Tr>
-                        {Object.keys(data[0]).map((key) => (
-                          <Th key={key}>{key}</Th>
-                        ))}
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {data.map((row, index) => (
-                        <Tr key={index}>
-                          {Object.values(row).map((value, i) => (
-                            <Td key={i}>{value}</Td>
+                  {data && data.length > 0 ? (
+                    <Table variant="simple" w="full">
+                      <Thead>
+                        <Tr>
+                          {Object.keys(data[0]).map((key) => (
+                            <Th key={key}>{key}</Th>
                           ))}
                         </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
+                      </Thead>
+                      <Tbody>
+                        {data.map((row, index) => (
+                          <Tr key={index}>
+                            {Object.values(row).map((value, i) => (
+                              <Td key={i}>{value}</Td>
+                            ))}
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  ) : (
+                    <Text>No data available to display.</Text>
+                  )}
                 </TabPanel>
                 <TabPanel>
                   <Box w="full">{getChartComponent()}</Box>
@@ -534,6 +582,7 @@ const ResultBox = ({ sql, data, chart }) => {
     </Box>
   );
 };
+
 
 
 // Airtable integration function
@@ -596,7 +645,7 @@ const ChatPage = () => {
   const [showExamples, setShowExamples] = useState(true);
   const [conversationCount, setConversationCount] = useState(0);
   const [isInputDisabled, setIsInputDisabled] = useState(false); // State to disable input on confirmation
-
+  
   const examplePrompts = [
     {
       title: '',
@@ -778,6 +827,7 @@ const ChatPage = () => {
           { text: `Error: ${error.message}`, isUser: false },
         ]);
       });
+      
   };
 
   return (
@@ -847,7 +897,11 @@ const ChatPage = () => {
                   </HStack>
                 )}
 
-                {result && <ResultBox sql={result.sql} data={result.data} chart={result.chart} />}
+                {result && 
+                <ErrorBoundary>
+                <ResultBox sql={result.sql} data={result.data} chart={result.chart} />
+                </ErrorBoundary>}
+              
               </VStack>
 
               {!isInputDisabled && (
