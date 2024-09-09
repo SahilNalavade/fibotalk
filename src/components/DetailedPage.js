@@ -218,6 +218,7 @@ const ResultBox = ({
   reportId,
   onTitleChange,
   status: initialStatus,
+  logs,
 }) => {
   const { hasCopied, onCopy } = useClipboard(sql);
   const [chartType, setChartType] = useState('bar');
@@ -494,7 +495,7 @@ const ResultBox = ({
       </Flex>
 
       <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xl">
-        <DrawerComponent />
+      <DrawerComponent isOpen={isOpen} onClose={onClose} logs={logs} />
       </Drawer>
 
       <Tabs onChange={handleTabChange}>
@@ -763,7 +764,11 @@ const ResultBox = ({
 const DetailedPage = ({ report }) => {
   const [breadcrumbItems, setBreadcrumbItems] = useState([{ label: 'Reports', href: '/' }]);
   const [title, setTitle] = useState(report['Report Name'] || 'Detailed Report');
-
+  const [logs, setLogs] = useState([
+    // Sample logs related to the report
+    { name: report['Report Name'], rule: 'Validation', timestamp: '2024-09-10 12:00 PM', action: 'Validation requested' },
+    // Add more logs specific to this report...
+  ]);
   if (!report) {
     return <Box>No Report Data Available</Box>;
   }
@@ -776,6 +781,7 @@ const DetailedPage = ({ report }) => {
       value: row.value || 0,
     })),
   };
+  
 
   const handleBreadcrumbUpdate = (currentTab) => {
     setBreadcrumbItems([
@@ -805,6 +811,7 @@ const DetailedPage = ({ report }) => {
         reportId={report.id}
         onTitleChange={handleTitleChange}
         status={report.Status}
+        logs={logs}
       />
     </main>
   );
