@@ -90,8 +90,87 @@ import SideNav from './SideNav';
 import { useAuth } from '../auth';
 import { UserButton } from '@clerk/clerk-react';
 import ErrorBoundary from './ErrorBoundry';
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { docco ,nightOwl} from 'react-syntax-highlighter/dist/esm/styles/hljs'; // You can change this to another theme like 'atom-one-dark' or 'github'
+import { useNavigate } from 'react-router-dom';
+
+// Airtable integration function
+const sendToAirtable = async (data) => {
+  const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
+  const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+  const AIRTABLE_TABLE_NAME = 'Conversation'; // Replace with your Airtable Table Name
+
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
+
+  try {
+    const fetchResponse = await fetch(`${url}?sort[0][field]=Message ID&sort[0][direction]=desc&maxRecords=1`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_PAT}`,
+      },
+    });
+
+    const fetchData = await fetchResponse.json();
+    let newSerialNumber = 1;
+
+    if (fetchData.records && fetchData.records.length > 0) {
+      const lastSerialNumber = fetchData.records[0].fields['Message ID'];
+      newSerialNumber = lastSerialNumber + 1;
+    }
+
+    const body = {
+      fields: {
+        "Message ID": newSerialNumber, // This will act as the message ID
+        "Organisation ID": String(data.organisationId || '').trim(),
+        "Report ID": String(data.reportId || '').trim(),
+        "User ID": String(data.userId || '').trim(),
+        "Message": String(data.message || '').trim(),
+        "Message User Type": String(data.messageUserType || '').trim(),
+        "Message Type": String(data.messageType || '').trim(),
+        "CreatedAt": new Date().toISOString(),
+        "UpdatedAt": new Date().toISOString(),
+        "Verification Status": "Pending",
+      },
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_PAT}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorDetail = await response.json();
+      console.error('Airtable Response:', errorDetail);
+      throw new Error(`Airtable Error: ${errorDetail.error.message}`);
+    }
+
+    const result = await response.json();
+    console.log('Airtable Record Created:', result);
+  } catch (error) {
+    console.error('Error sending data to Airtable:', error);
+  }
+};
+
 
 // Component to display chat messages
+const cleanMessage = (message) => {
+  // Remove markdown-like symbols ###, **, and leading '-'
+  return message
+    .replace(/###/g, '') // Remove ###
+    .replace(/\*\*/g, '') // Remove **
+    .replace(/^\s*-\s+/gm, '') // Remove leading dash '-' with spaces
+    .trim(); // Trim any leading or trailing whitespace
+};
+
+const cleanSQL = (sql) => {
+  // Remove backticks, triple backticks, and trim whitespace
+  return sql.replace(/```/g, '').trim();
+};
+
 const ChatMessage = ({ message, isUser, onEdit }) => {
   const bgColor = useColorModeValue(isUser ? 'transparent' : 'white', isUser ? 'blue.700' : 'gray.700');
   const borderColor = useColorModeValue(isUser ? 'transparent' : '#E2E8F0', isUser ? 'blue.700' : 'gray.700');
@@ -110,56 +189,45 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
 
   // Function to render formatted message content
   const formattedMessage = () => {
-    const lines = message.split('\n'); // Split message into lines
+    const cleanedMessage = cleanMessage(message);
+    const lines = cleanedMessage.split('\n');
     const elements = lines.map((line, index) => {
-      // Check if the line matches the pattern for numbered headings (e.g., "1. **Select Columns**:")
-      if (/^\d+\.\s\*\*.+\*\*:/.test(line)) {
+      if (/^\d+\.\s/.test(line)) {
+        // Step numbers
         return (
-          <Heading as="h5" size="sm" mb={1} color="blue.600" key={index}>
-            {line.replace(/^\d+\.\s\*\*/, '').replace(/\*\*:$/, '').trim()}
+          <Text key={`step-${index}`} fontWeight="bold" color="blue.500">
+            {line}
+          </Text>
+        );
+      }
+      if (line.startsWith('Pseudocode:')) {
+        // Pseudocode section
+        return (
+          <Heading as="h5" size="sm" mt={4} mb={2} color="teal.500" key={`heading-${index}`}>
+            {line}
           </Heading>
         );
       }
-      // Check if the line starts with ### for headers
-      if (line.startsWith('###')) {
+      if (/```/.test(line)) {
+        // Render code blocks with syntax highlighter
+        const code = lines.slice(index + 1, lines.indexOf('```', index + 1)).join('\n');
         return (
-          <Heading as="h4" size="md" mb={2} color="gray.600" key={index}>
-            {line.replace(/^###\s*/, '').trim()}
-          </Heading>
+          <Box key={`code-${index}`} overflowX="auto" maxWidth="100%">
+          <SyntaxHighlighter
+            key={`code-${index}`}
+            language="plaintext"
+            style={docco}
+            showLineNumbers
+            wrapLines
+          >
+            {code}
+          </SyntaxHighlighter>
+          </Box>
         );
       }
-      // Check if the line starts with # for subheaders
-      if (line.startsWith('#')) {
-        return (
-          <Heading as="h5" size="sm" mb={1} color="blue.500" key={index}>
-            {line.replace(/^#\s*/, '').trim()}
-          </Heading>
-        );
-      }
-      // Check if the line starts with * for list items
-      if (line.startsWith('*')) {
-        return (
-          <UnorderedList key={index} pl={5} mb={2}>
-            <ListItem color="gray.800">
-              {line.replace(/^\*\s*/, '').trim()}
-            </ListItem>
-          </UnorderedList>
-        );
-      }
-      // Check if the line starts with - for bullet points
-      if (line.startsWith('-')) {
-        return (
-          <UnorderedList key={index} pl={5} mb={2}>
-            <ListItem color="gray.800">
-              {line.replace(/^-/, '').trim()}
-            </ListItem>
-          </UnorderedList>
-        );
-      }
-      // Default rendering for other lines
       return (
-        <Text key={index} color="gray.700">
-          {line.trim()}
+        <Text key={`text-${index}`} color="gray.700">
+          {line}
         </Text>
       );
     });
@@ -244,9 +312,6 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
                 _hover={{ bg: 'transparent' }}
                 _active={{ bg: 'transparent' }}
               />
-              <Box ml={2}>
-                <UserButton />
-              </Box>
             </HStack>
           </HStack>
         </Box>
@@ -256,8 +321,8 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
 };
 
 // ResultBox component
-// ResultBox component with defensive checks
 const ResultBox = ({ sql, data, chart }) => {
+  const navigate = useNavigate(); // Initialize the navigate hook
   const { hasCopied, onCopy } = useClipboard(sql);
   const [chartType, setChartType] = useState('bar');
   const [chartSize, setChartSize] = useState(1);
@@ -265,6 +330,9 @@ const ResultBox = ({ sql, data, chart }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [error, setError] = useState(''); // State to hold validation errors
+
+  const maxDescriptionLength = 100; // Maximum character limit for description
 
   const downloadCSV = () => {
     if (!data || data.length === 0) {
@@ -345,6 +413,73 @@ const ResultBox = ({ sql, data, chart }) => {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
+  // Save button handler with validation
+  const saveResult = async () => {
+    // Validate required fields
+    if (!title.trim()) {
+      setError('Title is required.');
+      return;
+    }
+
+    if (!description.trim()) {
+      setError('Description is required.');
+      return;
+    }
+
+    if (description.length > maxDescriptionLength) {
+      setError(`Description must be less than ${maxDescriptionLength} characters.`);
+      return;
+    }
+
+    setError(''); // Clear any existing errors if validation passes
+
+    // Collect data to save
+    const resultData = {
+      "Organisation ID": 'ORG123', // Replace with actual Organisation ID
+      "Report ID": 'RPT456', // Replace with actual Report ID
+      "User ID": 'test@gmail.com', // Replace with actual User ID
+      "Message ID": 'MSG789', // Replace with actual Message ID
+      "Report Name": title, // Report name entered by the user
+      "Report Description": description, // Report description entered by the user
+      "SQL Query": sql, // The SQL query generated by the application
+      "Created At": new Date().toISOString(), // Timestamp for when the report was created
+      "Updated At": new Date().toISOString(), // Timestamp for when the report was last updated
+      "Status": 'Pending', // Status of the report, can be modified based on the application logic
+    };
+
+    // Airtable configuration
+    const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
+    const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+    const AIRTABLE_TABLE_NAME = 'SavedReports'; // Replace with your target Airtable Table Name
+
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
+
+    // Send data to Airtable
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${AIRTABLE_PAT}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ fields: resultData }),
+      });
+
+      if (!response.ok) {
+        const errorDetail = await response.json();
+        console.error('Airtable Response:', errorDetail);
+        throw new Error(`Airtable Error: ${errorDetail.error.message}`);
+      }
+
+      const result = await response.json();
+      console.log('Airtable Record Created:', result);
+      navigate('/'); // Redirect to the Reports page
+      onClose(); // Close the drawer or modal after saving
+    } catch (error) {
+      console.error('Error saving data to Airtable:', error);
+    }
+  };
+
   return (
     <Box borderWidth={1} borderRadius="md" p={4} w="full" mx="auto">
       <Tabs>
@@ -368,30 +503,32 @@ const ResultBox = ({ sql, data, chart }) => {
 
         <TabPanels>
           <TabPanel>
-            <Box
-              position="relative"
-              bg="gray.900"
-              color="white"
-              fontFamily="monospace"
-              fontSize="sm"
-              p={4}
-              borderRadius="md"
-              overflowX="auto"
-              w="full"
-            >
-              <pre style={{ textAlign: 'left', margin: 0 }}>{sql}</pre>
+            <Box position="relative" borderRadius="md" overflow="hidden">
+              <SyntaxHighlighter
+                language="sql"
+                style={nightOwl}
+                showLineNumbers
+                wrapLines
+                customStyle={{
+                  padding: '1rem',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: '#011627',
+                }}
+              >
+                {sql}
+              </SyntaxHighlighter>
               <IconButton
                 icon={<CopyIcon />}
+                aria-label="Copy SQL"
                 position="absolute"
                 top={2}
                 right={2}
-                onClick={onCopy}
                 size="sm"
-                aria-label="Copy SQL"
-                bg="gray.700"
+                onClick={() => {
+                  navigator.clipboard.writeText(sql);
+                }}
                 _hover={{ bg: 'gray.600' }}
-                _active={{ bg: 'gray.500' }}
-                color="white"
               />
             </Box>
           </TabPanel>
@@ -493,146 +630,48 @@ const ResultBox = ({ sql, data, chart }) => {
           <DrawerHeader>Save Result</DrawerHeader>
 
           <DrawerBody>
-            <FormControl id="title">
+            <FormControl id="title" isRequired>
               <FormLabel>Title</FormLabel>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter a title" />
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter a title"
+              />
             </FormControl>
 
-            <FormControl id="description" mt={4}>
+            <FormControl id="description" mt={4} isRequired>
               <FormLabel>Description</FormLabel>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter a description"
+                maxLength={maxDescriptionLength} // Limit description length
               />
+              <Text fontSize="sm" color="gray.500">
+                {description.length}/{maxDescriptionLength} characters
+              </Text>
             </FormControl>
 
-            <Tabs mt={4}>
-              <TabList>
-                <Tab>SQL</Tab>
-                <Tab>Data</Tab>
-                <Tab>Chart</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel>
-                  <Box position="relative" bg={'black'} color={'white'} p={5} fontSize={14}>
-                    <pre>{sql}</pre>
-                    <IconButton
-                      icon={<CopyIcon />}
-                      position="absolute"
-                      top={2}
-                      right={2}
-                      onClick={onCopy}
-                      color={'white'}
-                      bg={'transparent'}
-                      _active={'transparent'}
-                      _hover={'transparent'}
-                    />
-                  </Box>
-                </TabPanel>
-                <TabPanel>
-                  <Flex justifyContent="space-between" alignItems="center" mb={4}>
-                    <Text fontSize="lg" fontWeight="bold">
-                      Data Table
-                    </Text>
-                    <Button leftIcon={<DownloadIcon />} onClick={downloadCSV}>
-                      Download CSV
-                    </Button>
-                  </Flex>
-                  {data && data.length > 0 ? (
-                    <Table variant="simple" w="full">
-                      <Thead>
-                        <Tr>
-                          {Object.keys(data[0]).map((key) => (
-                            <Th key={key}>{key}</Th>
-                          ))}
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {data.map((row, index) => (
-                          <Tr key={index}>
-                            {Object.values(row).map((value, i) => (
-                              <Td key={i}>{value}</Td>
-                            ))}
-                          </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  ) : (
-                    <Text>No data available to display.</Text>
-                  )}
-                </TabPanel>
-                <TabPanel>
-                  <Box w="full">{getChartComponent()}</Box>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+            {error && (
+              <Text color="red.500" mt={2}>
+                {error}
+              </Text>
+            )}
           </DrawerBody>
 
           <DrawerFooter>
             <Button variant="outline" mr={3} onClick={onClose}>
               Cancel
             </Button>
-            <a href="/reports">
-              <Button colorScheme="blue">Save</Button>
-            </a>
+            <Button colorScheme="blue" onClick={saveResult}>
+              Save
+            </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </Box>
   );
 };
-
-
-
-// Airtable integration function
-const sendToAirtable = async (data) => {
-  const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
-  const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
-  const AIRTABLE_TABLE_NAME = 'PseudoCode';
-
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
-
-  try {
-    // Prepare the body with correct field names and ensure correct data types
-    const body = {
-      fields: {
-        "Organisation ID": String(data.organisationId || '').trim(),  // Ensure this is a string
-        "Report ID": String(data.reportId || '').trim(),               // Ensure this is a string
-        "User ID": String(data.userId || '').trim(),                  // Ensure this is a string
-        "Conversation ID": String(data.conversationId || '').trim(),  // Convert to string if necessary
-        "Message Query": String(data.messageQuery || '').trim(),      // Ensure this is a string
-        "Message User Type": String(data.messageUserType || '').trim(), // Ensure this is a string
-        "PseudoCode": String(data.pseudocode || '').trim(),           // Ensure this is a string
-        "CreatedAt": new Date().toISOString(),                       // Format date correctly
-        "UpdatedAt": new Date().toISOString(),
-        "Verification Status": "Pending", // Set a default status
-      },
-    };
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${AIRTABLE_PAT}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-
-    // Check for successful response
-    if (!response.ok) {
-      const errorDetail = await response.json(); // Get the error details from Airtable
-      console.error('Airtable Response:', errorDetail);
-      throw new Error(`Airtable Error: ${errorDetail.error.message}`);
-    }
-
-    const result = await response.json();
-    console.log('Airtable Record Created:', result);
-  } catch (error) {
-    console.error('Error sending data to Airtable:', error);
-  }
-};
-
 
 // Main ChatPage component
 const ChatPage = () => {
@@ -643,13 +682,12 @@ const ChatPage = () => {
   const [currentSteps, setCurrentSteps] = useState([]);
   const [result, setResult] = useState(null);
   const [showExamples, setShowExamples] = useState(true);
-  const [conversationCount, setConversationCount] = useState(0);
-  const [isInputDisabled, setIsInputDisabled] = useState(false); // State to disable input on confirmation
-  
+  const [isInputDisabled, setIsInputDisabled] = useState(false);
+
   const examplePrompts = [
     {
       title: '',
-      prompt: 'What is the total users and CLV - only high ticket ( using deals table)',
+      prompt: 'What is the total users and CLV - only high ticket (using deals table)',
       imageSrc: '/vector1.png',
     },
     {
@@ -667,44 +705,40 @@ const ChatPage = () => {
   const handleSend = () => {
     if (inputValue.trim() === '') return;
 
-    setMessages([...messages, { text: inputValue, isUser: true }]);
-    setInputValue('');
-    setShowExamples(false);
-
-    const newConversationId = conversationCount + 1;
-
-    // Create a new message object with a unique identifier only for user messages
+    // Create a new message object with unique identifier
     const newMessage = {
-      id: newConversationId,
       text: inputValue,
       isUser: true,
     };
 
-    // Add the new user message to the messages array
     const updatedMessages = [...messages, newMessage];
     setMessages(updatedMessages);
     setInputValue('');
     setShowExamples(false);
 
-    // Filter out system messages and format the conversation history
     const formattedConversation = updatedMessages
-      .filter((message) => message.isUser) // Include only user messages
-      .map((message) => `Conversation ${message.id}: ${message.text}`)
+      .filter((message) => message.isUser)
+      .map((message, index) => `Message ${index + 1}: ${message.text}`)
       .join('\n');
 
-    // Log the formatted conversation history
     console.log('Formatted Conversation: \n', formattedConversation);
 
-    // Send the formatted conversation history to your Flask API
     sendToAgent(formattedConversation);
-    // Update the conversation counter
-    setConversationCount(newConversationId);
+
+    // Send data to Airtable without manual Message ID
+    sendToAirtable({
+      organisationId: 'ORG123',
+      reportId: 'RPT456',
+      userId: 'test@gmail.com',
+      message: inputValue,
+      messageUserType: 'User',
+      messageType: 'Query',
+    });
   };
 
   const sendToAgent = (formattedConversation) => {
     const apiUrl = 'http://localhost:8080/api/generate-pseudocode';
 
-    // Display the loading message before starting the API call
     setMessages((prev) => [
       ...prev,
       {
@@ -722,63 +756,35 @@ const ChatPage = () => {
     })
       .then((response) => response.json())
       .then((data) => {
-        const pseudocodeSteps = data.pseudocode.split('\n'); // Assuming each step is on a new line
+        const pseudocodeSteps = data.pseudocode.split('\n');
         setCurrentSteps(pseudocodeSteps);
 
-        // Replace the loading message with the actual pseudocode
         setMessages((prevMessages) => [
-          ...prevMessages.slice(0, -1), // Remove the loading message
-          { text: data.pseudocode, isUser: false }, // Add system response to the chat
+          ...prevMessages.slice(0, -1),
+          {
+            text: data.pseudocode,
+            isUser: false,
+          },
         ]);
 
-        // Show the confirmation prompt only after pseudocode is displayed
         setIsWaitingForConfirmation(true);
 
-        // Send data to Airtable
         sendToAirtable({
           organisationId: 'ORG123',
           reportId: 'RPT456',
           userId: 'test@gmail.com',
-          conversationId: conversationCount + 1,
-          messageQuery: inputValue,
-          messageUserType: 'User',
-          pseudocode: data.pseudocode,
+          message: data.pseudocode,
+          messageUserType: 'Agent',
+          messageType: 'Pseudocode',
         });
       })
       .catch((error) => {
         console.error('Error:', error);
         setMessages((prevMessages) => [
-          ...prevMessages.slice(0, -1), // Remove the loading message in case of error
+          ...prevMessages.slice(0, -1),
           { text: `Error: ${error.message}`, isUser: false },
         ]);
       });
-  };
-
-  const handleEditMessage = (index, newMessage) => {
-    const updatedMessages = [...messages];
-    updatedMessages[index].text = newMessage;
-    setMessages(updatedMessages);
-  };
-
-  const handleConfirmation = (confirmed) => {
-    setIsWaitingForConfirmation(false);
-
-    if (confirmed) {
-      const formattedPseudocode = currentSteps.join('\n');
-      console.log('Formatted Pseudocode: \n', formattedPseudocode);
-
-      // Send the pseudocode to the Flask API to generate SQL
-      sendPseudocodeToAgent(formattedPseudocode);
-
-      // Disable the input box when confirmed
-      setIsInputDisabled(true);
-    } else {
-      setMessages((prev) => [
-        ...prev,
-        { text: 'I understand. Could you provide more details or clarify your request?', isUser: false },
-      ]);
-    }
-    setCurrentSteps([]);
   };
 
   const sendPseudocodeToAgent = (pseudocode) => {
@@ -817,8 +823,20 @@ const ChatPage = () => {
 
         setMessages((prev) => [
           ...prev,
-          { text: "Great! Here's the result:", isUser: false },
+          {
+            text: "Great! Here's the result:",
+            isUser: false,
+          },
         ]);
+
+        sendToAirtable({
+          organisationId: 'ORG123',
+          reportId: 'RPT456',
+          userId: 'test@gmail.com',
+          message: data.sql,
+          messageUserType: 'Agent',
+          messageType: 'SQL',
+        });
       })
       .catch((error) => {
         console.error('Error:', error);
@@ -827,7 +845,31 @@ const ChatPage = () => {
           { text: `Error: ${error.message}`, isUser: false },
         ]);
       });
-      
+  };
+
+  const handleEditMessage = (index, newMessage) => {
+    const updatedMessages = [...messages];
+    updatedMessages[index].text = newMessage;
+    setMessages(updatedMessages);
+  };
+
+  const handleConfirmation = (confirmed) => {
+    setIsWaitingForConfirmation(false);
+
+    if (confirmed) {
+      const formattedPseudocode = currentSteps.join('\n');
+      console.log('Formatted Pseudocode: \n', formattedPseudocode);
+
+      sendPseudocodeToAgent(formattedPseudocode);
+
+      setIsInputDisabled(true);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { text: 'I understand. Could you provide more details or clarify your request?', isUser: false },
+      ]);
+    }
+    setCurrentSteps([]);
   };
 
   return (
@@ -899,7 +941,7 @@ const ChatPage = () => {
 
                 {result && 
                 <ErrorBoundary>
-                <ResultBox sql={result.sql} data={result.data} chart={result.chart} />
+                  <ResultBox sql={result.sql} data={result.data} chart={result.chart} />
                 </ErrorBoundary>}
               
               </VStack>
