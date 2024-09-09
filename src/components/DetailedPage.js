@@ -91,18 +91,15 @@ SyntaxHighlighter.registerLanguage('sql', sql);
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-// Component to display chat messages
 const cleanMessage = (message) => {
-  // Remove markdown-like symbols ###, **, and leading '-'
   return message
-    .replace(/###/g, '') // Remove ###
-    .replace(/\*\*/g, '') // Remove **
-    .replace(/^\s*-\s+/gm, '') // Remove leading dash '-' with spaces
-    .trim(); // Trim any leading or trailing whitespace
+    .replace(/###/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/^\s*-\s+/gm, '')
+    .trim();
 };
 
 const cleanSQL = (sql) => {
-  // Remove backticks, triple backticks, and trim whitespace
   return sql.replace(/```/g, '').trim();
 };
 
@@ -112,11 +109,11 @@ const formatSQL = (sql) => {
       /(SELECT|FROM|WHERE|JOIN|AND|OR|GROUP BY|ORDER BY|LIMIT|OFFSET|LEFT JOIN|RIGHT JOIN|INNER JOIN|OUTER JOIN)/gi,
       '\n$1'
     )
-    .replace(/,/g, ',\n') // Break after commas
-    .replace(/\(/g, '(\n') // Break after open parentheses
-    .replace(/\)/g, '\n)') // Break before close parentheses
-    .replace(/```/g, '').trim()
-   
+    .replace(/,/g, ',\n')
+    .replace(/\(/g, '(\n')
+    .replace(/\)/g, '\n)')
+    .replace(/```/g, '')
+    .trim();
 };
 
 const updateAirtableRecord = async (recordId, fields) => {
@@ -144,9 +141,70 @@ const updateAirtableRecord = async (recordId, fields) => {
 
     const result = await response.json();
     console.log('Airtable Record Updated:', result);
-    return result.fields.Status; // Return updated status
+    return result.fields.Status;
   } catch (error) {
     console.error('Error updating Airtable record:', error);
+  }
+};
+
+const fetchAirtableRecord = async (recordId) => {
+  const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
+  const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+  const AIRTABLE_TABLE_NAME = 'SavedReports';
+
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}/${recordId}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_PAT}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorDetail = await response.json();
+      console.error('Error fetching Airtable record:', errorDetail);
+      throw new Error(`Fetch Error: ${errorDetail.error.message}`);
+    }
+
+    const result = await response.json();
+    console.log('Fetched Airtable Record:', result);
+    return result.fields;
+  } catch (error) {
+    console.error('Error fetching Airtable record:', error);
+    alert('Failed to fetch the existing record from Airtable.');
+  }
+};
+
+const createAirtableRecord = async (fields) => {
+  const AIRTABLE_PAT = 'pat7yphXE6tN9GRZo.4fa31f031768b1799770a8c2a9254d0f5cbf879cbe5dc2c6d7469ff11ec5cc89';
+  const AIRTABLE_BASE_ID = 'app4ZQ9jav2XzNIv9';
+  const AIRTABLE_TABLE_NAME = 'SavedReports';
+
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${AIRTABLE_PAT}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields }),
+    });
+
+    if (!response.ok) {
+      const errorDetail = await response.json();
+      console.error('Airtable Response:', errorDetail);
+      throw new Error(`Airtable Error: ${errorDetail.error.message}`);
+    }
+
+    const result = await response.json();
+    console.log('New Airtable Record Created:', result);
+    return result.fields.Status;
+  } catch (error) {
+    console.error('Error creating Airtable record:', error);
   }
 };
 
@@ -159,7 +217,7 @@ const ResultBox = ({
   onBreadcrumbUpdate,
   reportId,
   onTitleChange,
-  status: initialStatus, // Pass the initial status as a prop
+  status: initialStatus,
 }) => {
   const { hasCopied, onCopy } = useClipboard(sql);
   const [chartType, setChartType] = useState('bar');
@@ -171,9 +229,30 @@ const ResultBox = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editableTitle, setEditableTitle] = useState(title);
   const [editableDescription, setEditableDescription] = useState(description);
-  const [status, setStatus] = useState(initialStatus); // Track the status in state
+  const [status, setStatus] = useState(initialStatus);
 
   const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
+
+  const handleDuplicateAsTrainingData = async () => {
+    try {
+      const existingFields = await fetchAirtableRecord(reportId);
+      if (!existingFields) {
+        alert('Failed to fetch existing record fields.');
+        return;
+      }
+
+      const newFields = {
+        ...existingFields,
+        Status: 'Training data',
+      };
+
+      await createAirtableRecord(newFields);
+      alert('New record with status "Training data" has been created!');
+    } catch (error) {
+      alert('An error occurred while duplicating the record.');
+      console.error('Error during duplication process:', error);
+    }
+  };
 
   const downloadCSV = () => {
     const headers = Object.keys(data[0] || {}).join(',');
@@ -255,18 +334,45 @@ const ResultBox = ({
   };
 
   const handleStatusChangeToVerified = async () => {
-    // Toggle between Verified and Pending
     const newStatus = status === 'Verified' ? 'Pending' : 'Verified';
     const updatedStatus = await updateAirtableRecord(reportId, { Status: newStatus });
-    setStatus(updatedStatus); // Update status state immediately
+    setStatus(updatedStatus);
     onVerifyClose();
   };
 
   const handleStatusChangeToTraining = async () => {
-    // Toggle between Training data and Pending
-    const newStatus = status === 'Training data' ? 'Pending' : 'Training data';
-    const updatedStatus = await updateAirtableRecord(reportId, { Status: newStatus });
-    setStatus(updatedStatus); // Update status state immediately
+    try {
+      if (status === 'Training data') {
+        const updatedStatus = await updateAirtableRecord(reportId, { Status: 'Pending' });
+        setStatus(updatedStatus);
+
+        const existingFields = await fetchAirtableRecord(reportId);
+        if (existingFields) {
+          const updatedNewRecord = await updateAirtableRecord(existingFields.id, { Status: 'Deleted' });
+       
+        }
+      } else {
+        const existingFields = await fetchAirtableRecord(reportId);
+        if (!existingFields) {
+          alert('Failed to fetch existing record fields.');
+          return;
+        }
+
+        const newFields = {
+          ...existingFields,
+          Status: 'Training data',
+        };
+
+        const newRecordStatus = await createAirtableRecord(newFields);
+
+        if (newRecordStatus === 'Training data') {
+          setStatus(newRecordStatus);
+        }
+      }
+    } catch (error) {
+      alert('An error occurred while changing the status to Training data.');
+      console.error('Error during status change process:', error);
+    }
     onTrainingClose();
   };
 
@@ -334,8 +440,9 @@ const ResultBox = ({
             </Tooltip>
           </Editable>
         </VStack>
-        
+
         <Flex gap={4}>
+  {/* History Icon */}
   <Tooltip label="View history" hasArrow>
     <IconButton
       icon={<FaClock />}
@@ -346,19 +453,33 @@ const ResultBox = ({
     />
   </Tooltip>
 
-  {/* Documentation button, enabled only if the status is 'Verified' or 'Training data' */}
-  <Tooltip label="View documentation related to this report" hasArrow>
+  {/* Book Icon - Only clickable when status is 'Verified' */}
+  <Tooltip
+    label={
+      status === 'Verified' || status === 'Training data'
+        ? "View Documentation"
+        : "Only accessible when verified or marked for training"
+    }
+    hasArrow
+  >
     <IconButton
       icon={<FaBook />}
       size="md"
       aria-label="View Documentation"
       variant="ghost"
-      onClick={onTrainingOpen}
+      onClick={
+        status === 'Verified' || status === 'Training data'
+          ? onTrainingOpen
+          : null
+      } // Only triggers if the shield is green
       colorScheme={status === 'Training data' ? 'green' : 'yellow'}
-      isDisabled={status !== 'Verified' && status !== 'Training data'} // Disable unless status is 'Verified' or 'Training data'
+      isDisabled={
+        status !== 'Verified' && status !== 'Training data'
+      } // Disable if not verified or training data
     />
   </Tooltip>
 
+  {/* Shield Icon for status change */}
   <Tooltip label="Verify or mark this report for training" hasArrow>
     <IconButton
       icon={<FaShieldAlt />}
@@ -370,7 +491,6 @@ const ResultBox = ({
     />
   </Tooltip>
 </Flex>
-
       </Flex>
 
       <Drawer isOpen={isOpen} placement="right" onClose={onClose} size="xl">
@@ -478,59 +598,59 @@ const ResultBox = ({
           <TabPanel>
             <Box>
               <Flex justifyContent="end" alignItems="center" mb={4}>
-  <HStack spacing={2}>
-    <Tooltip label="Reset chart size" hasArrow>
-      <IconButton icon={<RepeatIcon />} onClick={() => setChartSize(1)} />
-    </Tooltip>
-    <Tooltip label="Download chart" hasArrow>
-      <IconButton
-        icon={<DownloadIcon />}
-        onClick={() => alert('Download chart functionality to be implemented')}
-      />
-    </Tooltip>
-    <Tooltip label="Zoom in on chart" hasArrow>
-      <IconButton
-        icon={<AddIcon />}
-        onClick={() => setChartSize((prev) => prev + 0.2)}
-      />
-    </Tooltip>
-    <Tooltip label="Zoom out on chart" hasArrow>
-      <IconButton
-        icon={<MinusIcon />}
-        onClick={() => setChartSize((prev) => (prev > 0.4 ? prev - 0.2 : prev))}
-      />
-    </Tooltip>
-    <Tooltip label="Expand chart to full screen" hasArrow>
-      <IconButton icon={<FaExpand />} onClick={openModal} />
-    </Tooltip>
-    <Menu>
-      <Tooltip label="Change chart type" hasArrow>
-        <MenuButton as={Button}>
-          <HStack>
-            {chartType === 'bar' && <FaChartBar />}
-            {chartType === 'line' && <FaChartLine />}
-            {chartType === 'pie' && <FaChartPie />}
-            <Text>
-              {chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart
-            </Text>
-            <ChevronDownIcon />
-          </HStack>
-        </MenuButton>
-      </Tooltip>
-      <MenuList>
-        <MenuItem icon={<FaChartBar />} onClick={() => setChartType('bar')}>
-          Bar Chart
-        </MenuItem>
-        <MenuItem icon={<FaChartLine />} onClick={() => setChartType('line')}>
-          Line Chart
-        </MenuItem>
-        <MenuItem icon={<FaChartPie />} onClick={() => setChartType('pie')}>
-          Pie Chart
-        </MenuItem>
-      </MenuList>
-    </Menu>
-  </HStack>
-</Flex>
+                <HStack spacing={2}>
+                  <Tooltip label="Reset chart size" hasArrow>
+                    <IconButton icon={<RepeatIcon />} onClick={() => setChartSize(1)} />
+                  </Tooltip>
+                  <Tooltip label="Download chart" hasArrow>
+                    <IconButton
+                      icon={<DownloadIcon />}
+                      onClick={() => alert('Download chart functionality to be implemented')}
+                    />
+                  </Tooltip>
+                  <Tooltip label="Zoom in on chart" hasArrow>
+                    <IconButton
+                      icon={<AddIcon />}
+                      onClick={() => setChartSize((prev) => prev + 0.2)}
+                    />
+                  </Tooltip>
+                  <Tooltip label="Zoom out on chart" hasArrow>
+                    <IconButton
+                      icon={<MinusIcon />}
+                      onClick={() => setChartSize((prev) => (prev > 0.4 ? prev - 0.2 : prev))}
+                    />
+                  </Tooltip>
+                  <Tooltip label="Expand chart to full screen" hasArrow>
+                    <IconButton icon={<FaExpand />} onClick={openModal} />
+                  </Tooltip>
+                  <Menu>
+                    <Tooltip label="Change chart type" hasArrow>
+                      <MenuButton as={Button}>
+                        <HStack>
+                          {chartType === 'bar' && <FaChartBar />}
+                          {chartType === 'line' && <FaChartLine />}
+                          {chartType === 'pie' && <FaChartPie />}
+                          <Text>
+                            {chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart
+                          </Text>
+                          <ChevronDownIcon />
+                        </HStack>
+                      </MenuButton>
+                    </Tooltip>
+                    <MenuList>
+                      <MenuItem icon={<FaChartBar />} onClick={() => setChartType('bar')}>
+                        Bar Chart
+                      </MenuItem>
+                      <MenuItem icon={<FaChartLine />} onClick={() => setChartType('line')}>
+                        Line Chart
+                      </MenuItem>
+                      <MenuItem icon={<FaChartPie />} onClick={() => setChartType('pie')}>
+                        Pie Chart
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+                </HStack>
+              </Flex>
               <Box transform={`scale(${chartSize})`} transformOrigin="top left">
                 {getChartComponent()}
               </Box>
@@ -684,7 +804,7 @@ const DetailedPage = ({ report }) => {
         onBreadcrumbUpdate={handleBreadcrumbUpdate}
         reportId={report.id}
         onTitleChange={handleTitleChange}
-        status={report.Status} // Pass the status of the report to ResultBox
+        status={report.Status}
       />
     </main>
   );
