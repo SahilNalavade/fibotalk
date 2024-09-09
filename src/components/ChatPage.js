@@ -323,6 +323,7 @@ const ChatMessage = ({ message, isUser, onEdit }) => {
 // ResultBox component
 const ResultBox = ({ sql, data, chart }) => {
   const navigate = useNavigate(); // Initialize the navigate hook
+
   const { hasCopied, onCopy } = useClipboard(sql);
   const [chartType, setChartType] = useState('bar');
   const [chartSize, setChartSize] = useState(1);
@@ -331,7 +332,6 @@ const ResultBox = ({ sql, data, chart }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState(''); // State to hold validation errors
-
   const maxDescriptionLength = 100; // Maximum character limit for description
 
   const downloadCSV = () => {
@@ -413,8 +413,9 @@ const ResultBox = ({ sql, data, chart }) => {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  // Save button handler with validation
+  // Save button handler
   const saveResult = async () => {
+    // Collect data to save
     // Validate required fields
     if (!title.trim()) {
       setError('Title is required.');
@@ -430,10 +431,6 @@ const ResultBox = ({ sql, data, chart }) => {
       setError(`Description must be less than ${maxDescriptionLength} characters.`);
       return;
     }
-
-    setError(''); // Clear any existing errors if validation passes
-
-    // Collect data to save
     const resultData = {
       "Organisation ID": 'ORG123', // Replace with actual Organisation ID
       "Report ID": 'RPT456', // Replace with actual Report ID
@@ -474,6 +471,7 @@ const ResultBox = ({ sql, data, chart }) => {
       const result = await response.json();
       console.log('Airtable Record Created:', result);
       navigate('/'); // Redirect to the Reports page
+      // Optional: Show a success message or perform any other action after saving
       onClose(); // Close the drawer or modal after saving
     } catch (error) {
       console.error('Error saving data to Airtable:', error);
@@ -503,34 +501,36 @@ const ResultBox = ({ sql, data, chart }) => {
 
         <TabPanels>
           <TabPanel>
-            <Box position="relative" borderRadius="md" overflow="hidden">
-              <SyntaxHighlighter
-                language="sql"
-                style={nightOwl}
-                showLineNumbers
-                wrapLines
-                customStyle={{
-                  padding: '1rem',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: '#011627',
-                }}
-              >
-                {sql}
-              </SyntaxHighlighter>
-              <IconButton
-                icon={<CopyIcon />}
-                aria-label="Copy SQL"
-                position="absolute"
-                top={2}
-                right={2}
-                size="sm"
-                onClick={() => {
-                  navigator.clipboard.writeText(sql);
-                }}
-                _hover={{ bg: 'gray.600' }}
-              />
-            </Box>
+          <Box position="relative" borderRadius="md" overflow="hidden">
+  <SyntaxHighlighter
+    language="sql"
+    style={nightOwl}
+    showLineNumbers
+    wrapLines
+    customStyle={{
+      padding: '1rem',
+      borderRadius: '8px',
+      fontSize: '14px', // Adjust font size
+      backgroundColor: '#011627', // Match the Night Owl theme
+    }}
+  >
+    {cleanSQL(sql)}
+  </SyntaxHighlighter>
+  {/* Optional: Add Copy Button */}
+  <IconButton
+    icon={<CopyIcon />}
+    aria-label="Copy SQL"
+    position="absolute"
+    top={2}
+    right={2}
+    size="sm"
+    onClick={() => {
+      navigator.clipboard.writeText(cleanSQL(sql));
+    }}
+    _hover={{ bg: 'gray.600' }}
+  />
+</Box>
+
           </TabPanel>
           <TabPanel>
             <Flex justifyContent="space-between" alignItems="center" mb={4}>
@@ -630,13 +630,9 @@ const ResultBox = ({ sql, data, chart }) => {
           <DrawerHeader>Save Result</DrawerHeader>
 
           <DrawerBody>
-            <FormControl id="title" isRequired>
+            <FormControl id="title" isRequired> 
               <FormLabel>Title</FormLabel>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter a title"
-              />
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter a title" />
             </FormControl>
 
             <FormControl id="description" mt={4} isRequired>
@@ -645,18 +641,88 @@ const ResultBox = ({ sql, data, chart }) => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter a description"
-                maxLength={maxDescriptionLength} // Limit description length
+                maxLength={100}
               />
               <Text fontSize="sm" color="gray.500">
-                {description.length}/{maxDescriptionLength} characters
+                {description.length}/100 characters
               </Text>
             </FormControl>
 
-            {error && (
-              <Text color="red.500" mt={2}>
-                {error}
-              </Text>
-            )}
+            <Tabs mt={4}>
+              <TabList>
+                <Tab>SQL</Tab>
+                <Tab>Data</Tab>
+                <Tab>Chart</Tab>
+              </TabList>
+              <TabPanels>
+                <TabPanel>
+                <Box position="relative" borderRadius="md" overflow="hidden">
+  <SyntaxHighlighter
+    language="sql"
+    style={nightOwl}
+    showLineNumbers
+    wrapLines
+    customStyle={{
+      padding: '1rem',
+      borderRadius: '8px',
+      fontSize: '14px', // Adjust font size
+      backgroundColor: '#011627', // Match the Night Owl theme
+    }}
+  >
+    {cleanSQL(sql)}
+  </SyntaxHighlighter>
+  {/* Optional: Add Copy Button */}
+  <IconButton
+    icon={<CopyIcon />}
+    aria-label="Copy SQL"
+    position="absolute"
+    top={2}
+    right={2}
+    size="sm"
+    onClick={() => {
+      navigator.clipboard.writeText(cleanSQL(sql));
+    }}
+    _hover={{ bg: 'gray.600' }}
+  />
+</Box>
+                </TabPanel>
+                <TabPanel>
+                  <Flex justifyContent="space-between" alignItems="center" mb={4}>
+                    <Text fontSize="lg" fontWeight="bold">
+                      Data Table
+                    </Text>
+                    <Button leftIcon={<DownloadIcon />} onClick={downloadCSV}>
+                      Download CSV
+                    </Button>
+                  </Flex>
+                  {data && data.length > 0 ? (
+                    <Table variant="simple" w="full">
+                      <Thead>
+                        <Tr>
+                          {Object.keys(data[0]).map((key) => (
+                            <Th key={key}>{key}</Th>
+                          ))}
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {data.map((row, index) => (
+                          <Tr key={index}>
+                            {Object.values(row).map((value, i) => (
+                              <Td key={i}>{value}</Td>
+                            ))}
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  ) : (
+                    <Text>No data available to display.</Text>
+                  )}
+                </TabPanel>
+                <TabPanel>
+                  <Box w="full">{getChartComponent()}</Box>
+                </TabPanel>
+              </TabPanels>
+            </Tabs>
           </DrawerBody>
 
           <DrawerFooter>

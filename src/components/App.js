@@ -26,7 +26,7 @@ function App() {
               <Route path="/DatabasePage" element={<DatabasePage />} />
               <Route path="/DatabasePagec" element={<DatabasePagecopy />} />
               <Route path="/schema-page" element={<SchemaPage />} />
-              <Route path="/chat-page/:chatId" element={<ChatPage />} />
+              <Route path="/chat-page" element={<ChatPage />} />
               <Route path="/connections" element={<Dashboard />} />
               <Route path="/details" element={<DetailedPage />} />
               <Route path="*" element={<NotFoundPage />} /> {/* Fallback route */}
