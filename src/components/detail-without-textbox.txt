@@ -48,12 +48,8 @@ import {
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
-  Textarea,
-  
-
 } from '@chakra-ui/react';
 import {
-  
   EditIcon,
   CopyIcon,
   DownloadIcon,
@@ -235,19 +231,9 @@ const ResultBox = ({
   const [editableTitle, setEditableTitle] = useState(title);
   const [editableDescription, setEditableDescription] = useState(description);
   const [status, setStatus] = useState(initialStatus);
-  const [editableSQL, setEditableSQL] = useState(sql);
 
   const breadcrumbColor = useColorModeValue('gray.600', 'gray.300');
-  const handleSaveSQL = async () => {
-    try {
-      await updateAirtableRecord(reportId, { 'SQL Query': editableSQL });
-      alert('SQL has been saved successfully!');
-    } catch (error) {
-      alert('Failed to save SQL. Please try again.');
-      console.error('Error saving SQL:', error);
-    }
-  };
-  
+
   const handleDuplicateAsTrainingData = async () => {
     try {
       const existingFields = await fetchAirtableRecord(reportId);
@@ -520,28 +506,66 @@ const ResultBox = ({
         </TabList>
 
         <TabPanels>
-        <TabPanel>
-  <Box mb={4}>
-    <Textarea
-      value={editableSQL}
-      onChange={(e) => setEditableSQL(e.target.value)}
-      fontSize="sm"
-      fontFamily="monospace"
-      bg="gray.900"
-      color="white"
-      height="200px"
-      resize="vertical"
-    />
-  </Box>
-  <Button
-    // leftIcon={<SaveIcon />}
-    colorScheme="blue"
-    onClick={handleSaveSQL}
-  >
-    Save SQL
-  </Button>
-</TabPanel>
+          <TabPanel>
+            <Box
+              bg="gray.900"
+              color="white"
+              fontFamily="monospace"
+              fontSize="sm"
+              borderRadius="md"
+              overflow="hidden"
+              maxHeight="400px"
+              position="relative"
+            >
+              <Box
+                overflowY="auto"
+                maxHeight="360px"
+                p={4}
+                bg="gray.900"
+                borderRadius="md"
+                css={{
+                  scrollbarWidth: 'thin',
+                  '&::-webkit-scrollbar': {
+                    width: '8px',
+                    height: '8px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    background: '#555',
+                    borderRadius: '8px',
+                  },
+                }}
+              >
+                <SyntaxHighlighter
+                  language="sql"
+                  style={nightOwl}
+                  wrapLongLines={true}
+                  showLineNumbers
+                  customStyle={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
+                    maxWidth: '100%',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {formatSQL(sql)}
+                </SyntaxHighlighter>
+              </Box>
 
+              <Flex position="absolute" top={2} right={2} gap={2}>
+                <IconButton
+                  icon={<CopyIcon />}
+                  size="sm"
+                  aria-label="Copy SQL"
+                  bg="gray.700"
+                  _hover={{ bg: 'gray.600' }}
+                  _active={{ bg: 'gray.500' }}
+                  color="white"
+                  onClick={onCopy}
+                />
+              </Flex>
+            </Box>
+          </TabPanel>
 
           <TabPanel>
             <Flex justifyContent="space-between" alignItems="center" mb={4}>
