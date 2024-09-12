@@ -803,7 +803,7 @@ const ChatPage = () => {
   };
 
   const sendToAgent = (formattedConversation) => {
-    const apiUrl = 'http://localhost:8080/api/generate-pseudocode';
+    const apiUrl = 'https://fibo-flask.onrender.com/api/generate-pseudocode';
 
     setMessages((prev) => [
       ...prev,
@@ -854,7 +854,7 @@ const ChatPage = () => {
   };
 
   const sendPseudocodeToAgent = (pseudocode) => {
-    const apiUrl = 'http://localhost:8080/api/generate-sql';
+    const apiUrl = 'https://fibo-flask.onrender.com/api/generate-sql';
 
     fetch(apiUrl, {
       method: 'POST',
