@@ -310,7 +310,7 @@ const handleSave = useCallback(async () => {
     setTimeout(async () => {
       try {
         if (databaseServer === 'SnowFlake') {
-          await axios.post('http://localhost:5003/save-schema', {
+          await axios.post('https://fibo-flask.onrender.com/save-schema', {
             Username: username,
             Password: password,
             Account: account,
@@ -321,7 +321,7 @@ const handleSave = useCallback(async () => {
             'Database Server': 'SNOWFLAKE',
           });
 
-          await axios.post('http://localhost:5004/save_schema', {
+          await axios.post('https://fibo-flask.onrender.com/save_schema', {
             Username: username,
             Password: password,
             Account: account,
@@ -333,7 +333,7 @@ const handleSave = useCallback(async () => {
             'Database Server': 'SNOWFLAKE',
           });
 
-          await axios.post('http://localhost:5005/save-column-schema', {
+          await axios.post('https://fibo-flask.onrender.com/save-column-schema', {
             Username: username,
             Password: password,
             Account: account,
@@ -348,9 +348,9 @@ const handleSave = useCallback(async () => {
           
           await axios.post('/api/save-bq-schema', commonData);
           console.log('bq schema started');
-          await axios.post('http://localhost:5001/save-bq-tables', commonData);
+          await axios.post('https://fibo-flask.onrender.com/save-bq-tables', commonData);
           console.log('bq table started');
-          await axios.post('http://localhost:5002/save-bq-columns', commonData);
+          await axios.post('https://fibo-flask.onrender.com/save-bq-columns', commonData);
           console.log('bq column started');
         }
       } catch (flaskError) {
