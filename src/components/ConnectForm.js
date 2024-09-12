@@ -348,28 +348,45 @@ const handleSave = useCallback(async () => {
 
           // Corrected endpoint URL to ensure it's targeting the right Flask server
           try {
+            // Corrected API call with detailed error handling
             await axios.post('https://fibo-flask.onrender.com/api/save-bq-schema', commonData);
             console.log('bq schema started');
           } catch (error) {
             console.error('Error in Flask API calls:', error);
             if (error.response) {
-              // Server responded with a status other than 200 range
+              // Server responded with a status other than 2xx
               console.error('Error response:', error.response.data);
+              toast({
+                title: 'Flask Error',
+                description: `Error from server: ${error.response.data.error || 'Unknown server error'}`,
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+                position: 'top-right',
+              });
             } else if (error.request) {
-              // Request was made but no response received
+              // Request was made, but no response received
               console.error('Error request:', error.request);
+              toast({
+                title: 'Network Error',
+                description: 'No response received from the server. Possible CORS or network issue.',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+                position: 'top-right',
+              });
             } else {
               // Something else happened
               console.error('General error:', error.message);
+              toast({
+                title: 'Error',
+                description: error.message || 'An unexpected error occurred.',
+                status: 'error',
+                duration: 5000,
+                isClosable: true,
+                position: 'top-right',
+              });
             }
-            toast({
-              title: 'Flask Error',
-              description: 'Network error or CORS issue. Please check the server configuration.',
-              status: 'error',
-              duration: 5000,
-              isClosable: true,
-              position: 'top-right',
-            });
           }
           
           await axios.post('https://fibo-flask.onrender.com/save-bq-tables', commonData);
