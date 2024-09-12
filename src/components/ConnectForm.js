@@ -345,14 +345,18 @@ const handleSave = useCallback(async () => {
           });
         } else if (databaseServer === 'BigQuery') {
           console.log('bq fetch started');
-          
-          await axios.post('/api/save-bq-schema', commonData);
+
+          // Corrected endpoint URL to ensure it's targeting the right Flask server
+          await axios.post('https://fibo-flask.onrender.com/api/save-bq-schema', commonData);
           console.log('bq schema started');
+
           await axios.post('https://fibo-flask.onrender.com/save-bq-tables', commonData);
           console.log('bq table started');
+
           await axios.post('https://fibo-flask.onrender.com/save-bq-columns', commonData);
           console.log('bq column started');
         }
+
       } catch (flaskError) {
         console.error('Error in Flask API calls:', flaskError);
         toast({
