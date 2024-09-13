@@ -348,8 +348,17 @@ const handleSave = useCallback(async () => {
 
           // Corrected endpoint URL to ensure it's targeting the right Flask server
           try {
-            // Corrected API call with detailed error handling
-            await axios.post('https://fibo-flask.onrender.com/api/save-bq-schema', commonData);
+            // Corrected API call with detailed error handling and withCredentials set properly
+            await axios.post(
+              'https://fibo-flask.onrender.com/api/save-bq-schema',
+              commonData,
+              {
+                withCredentials: true,  // Ensure credentials like cookies are included in the request
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
             console.log('bq schema started');
           } catch (error) {
             console.error('Error in Flask API calls:', error);
@@ -389,11 +398,41 @@ const handleSave = useCallback(async () => {
             }
           }
           
-          await axios.post('https://fibo-flask.onrender.com/save-bq-tables', commonData);
-          console.log('bq table started');
-
-          await axios.post('https://fibo-flask.onrender.com/save-bq-columns', commonData);
-          console.log('bq column started');
+          try {
+            // Additional Axios POST request for saving BigQuery tables
+            await axios.post(
+              'https://fibo-flask.onrender.com/save-bq-tables',
+              commonData,
+              {
+                withCredentials: true,  // Ensure credentials are included
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+            console.log('bq table started');
+          } catch (error) {
+            console.error('Error in saving BQ tables:', error);
+            // Handle errors similarly as above if needed
+          }
+          
+          try {
+            // Additional Axios POST request for saving BigQuery columns
+            await axios.post(
+              'https://fibo-flask.onrender.com/save-bq-columns',
+              commonData,
+              {
+                withCredentials: true,  // Ensure credentials are included
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+              }
+            );
+            console.log('bq column started');
+          } catch (error) {
+            console.error('Error in saving BQ columns:', error);
+            // Handle errors similarly as above if needed
+          }
         }
 
       } catch (flaskError) {
